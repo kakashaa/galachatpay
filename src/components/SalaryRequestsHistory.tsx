@@ -122,7 +122,7 @@ const handleSaveReceipt = (request: SalaryRequest) => {
         <div class="divider"></div>
         <div class="row"><span class="label">الحالة</span><span class="value"><span class="status ${statusClass}">${statusLabel}</span></span></div>
         <div class="row"><span class="label">رقم الطلب</span><span class="value">${request.id || '-'}</span></div>
-        <div class="row"><span class="label">التاريخ</span><span class="value">${new Date(request.created_at).toLocaleDateString('ar-SA')}</span></div>
+        <div class="row"><span class="label">التاريخ</span><span class="value">${isNaN(new Date(request.created_at).getTime()) ? '—' : new Date(request.created_at).toLocaleDateString('ar-SA')}</span></div>
         <div class="row"><span class="label">نوع الطلب</span><span class="value">${getRequestTypeLabel(request.request_type) || request.bank || '-'}</span></div>
         ${request.reference_id ? `<div class="row"><span class="label">المرجعي</span><span class="value">${request.reference_id}</span></div>` : ''}
         ${request.account_name ? `<div class="row"><span class="label">المستلم</span><span class="value">${request.account_name}</span></div>` : ''}
@@ -341,7 +341,8 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             return true;
           }).map((req, i) => {
             const st = getStatus(req.status);
-            const dateStr = new Date(req.created_at).toLocaleDateString("ar-EG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+            const _d = new Date(req.created_at);
+            const dateStr = isNaN(_d.getTime()) ? "—" : _d.toLocaleDateString("ar-EG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
             const bankLabel = getRequestTypeLabel(req.request_type) || req.bank || "";
             const isApproved = req.status === "approved" || req.status === "delivered";
             const isRejected = req.status === "rejected";
@@ -472,14 +473,18 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
               {selectedReq.status === "rejected" && selectedReq.rejection_image_url && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold" style={{ color: "#ffb4ab" }}>صورة توضيحية:</p>
-                  <img src={selectedReq.rejection_image_url} alt="rejection" className="w-full max-h-[200px] object-contain rounded-xl border border-red-500/20" />
+                  <a href={selectedReq.rejection_image_url} target="_blank" rel="noopener noreferrer">
+                    <img src={selectedReq.rejection_image_url} alt="rejection" className="w-full max-h-[400px] object-contain rounded-xl border border-red-500/20 cursor-pointer active:opacity-80" />
+                  </a>
                 </div>
               )}
 
-              {selectedReq.status === "approved" && selectedReq.transfer_image_url && (
+              {(selectedReq.status === "approved" || selectedReq.status === "delivered" || selectedReq.status === "completed" || selectedReq.status === "done") && selectedReq.transfer_image_url && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold" style={{ color: "#4ae183" }}>إيصال التحويل:</p>
-                  <img src={selectedReq.transfer_image_url} alt="receipt" className="w-full max-h-[200px] object-contain rounded-xl border border-emerald-500/20" />
+                  <a href={selectedReq.transfer_image_url} target="_blank" rel="noopener noreferrer">
+                    <img src={selectedReq.transfer_image_url} alt="receipt" className="w-full max-h-[400px] object-contain rounded-xl border border-emerald-500/20 cursor-pointer active:opacity-80" />
+                  </a>
                 </div>
               )}
 
