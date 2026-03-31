@@ -122,7 +122,7 @@ const handleSaveReceipt = (request: SalaryRequest) => {
         <div class="divider"></div>
         <div class="row"><span class="label">الحالة</span><span class="value"><span class="status ${statusClass}">${statusLabel}</span></span></div>
         <div class="row"><span class="label">رقم الطلب</span><span class="value">${request.id || '-'}</span></div>
-        <div class="row"><span class="label">التاريخ</span><span class="value">${isNaN(new Date(request.created_at).getTime()) ? '—' : new Date(request.created_at).toLocaleDateString('ar-SA')}</span></div>
+        <div class="row"><span class="label">التاريخ</span><span class="value">${isNaN(new Date(request.created_at).getTime()) ? '—' : new Date(request.created_at).toLocaleDateString('ar-EG')}</span></div>
         <div class="row"><span class="label">نوع الطلب</span><span class="value">${getRequestTypeLabel(request.request_type) || request.bank || '-'}</span></div>
         ${request.reference_id ? `<div class="row"><span class="label">المرجعي</span><span class="value">${request.reference_id}</span></div>` : ''}
         ${request.account_name ? `<div class="row"><span class="label">المستلم</span><span class="value">${request.account_name}</span></div>` : ''}
@@ -145,7 +145,7 @@ const getMonthOptions = () => {
   for (let i = 0; i < 6; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("ar-SA", { year: "numeric", month: "long" });
+    const label = d.toLocaleDateString("ar-EG", { year: "numeric", month: "long" });
     months.push({ value, label });
   }
   return months;
@@ -228,25 +228,31 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
           }));
 
         const usedTransfers: SalaryRequest[] = ((transfersRes.transfers || []) as any[])
-          .filter((t: any) => t.is_used)
           .filter((t: any) => {
             const ref = String(t.reference_id);
             return !externalIds.has(ref) && !externalRefs.has(ref)
               && !localData.some((l: any) => l.transfer_id === ref || l.transaction_id === ref);
           })
-          .map((t: any) => ({
-            id: `#${t.reference_id}`,
-            amount: t.amount_usd || 0,
-            status: "approved",
-            bank: "شحن كوينزات",
-            country: "",
-            created_at: t.time ? new Date(t.time).toISOString() : new Date().toISOString(),
-            reference_id: String(t.reference_id),
-            amount_coins: t.amount_coins || undefined,
-            request_type: t.request_type || "charge_self",
-            target_name: t.target_name || undefined,
-            target_uuid: t.target_uuid || undefined,
-          }));
+          .map((t: any) => {
+            const usedStatus = t.usedStatus || (t.is_used ? "approved" : "pending");
+            const statusMap: Record<string, string> = { approved: "approved", delivered: "approved", rejected: "rejected", pending: "pending", review: "pending", used: "approved" };
+            return {
+              id: `#${t.reference_id}`,
+              amount: t.amount_usd || 0,
+              status: statusMap[usedStatus] || (t.is_used ? "approved" : "pending"),
+              bank: t.request_type === "cash" ? "سحب نقدي" : "شحن كوينزات",
+              country: "",
+              created_at: t.time ? new Date(t.time).toISOString() : new Date().toISOString(),
+              reference_id: String(t.reference_id),
+              amount_coins: t.amount_coins || undefined,
+              request_type: t.request_type || "charge_self",
+              target_name: t.target_name || undefined,
+              target_uuid: t.target_uuid || undefined,
+              admin_note: t.admin_note || undefined,
+              transfer_image_url: t.transfer_image_url || t.receipt_url || undefined,
+              rejection_image_url: t.rejection_image_url || undefined,
+            };
+          });
 
         const all = [...externalRequests, ...localRequests, ...usedTransfers].sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
