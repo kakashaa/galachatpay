@@ -339,7 +339,10 @@ const SalaryWithdraw: React.FC = () => {
             const transferTime = new Date(hasTz ? rawT : rawT + " UTC");
             const now = new Date();
             const diffMins = (now.getTime() - transferTime.getTime()) / 60000;
-            if (diffMins > 1440) return false;
+            // Grace period: allow up to 48h on first day of month (for previous month transfers)
+            const isFirstOfMonth = new Date().getDate() === 1;
+            const maxMins = isFirstOfMonth ? 2880 : 1440;
+            if (diffMins > maxMins) return false;
           }
           return true;
         }).map(mapTransfer);
