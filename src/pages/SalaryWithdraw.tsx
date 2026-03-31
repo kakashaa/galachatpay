@@ -393,14 +393,19 @@ const SalaryWithdraw: React.FC = () => {
       // Try user-finance-api first (reliable)
       const resp = await fetch(`https://hola-chat.com/user-finance-api.php?key=ghala2026actions&uuid=${targetUuid.trim()}&month=${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}`);
       const finData = await resp.json();
-      if (finData.ok && finData.data?.name) {
-        setTargetInfo({ name: finData.data.name, avatar: "", uuid: targetUuid.trim() });
+      if (finData.ok && finData.data) {
+        const displayName = finData.data.name || ("مستخدم #" + targetUuid.trim());
+        setTargetInfo({ name: displayName, avatar: "", uuid: targetUuid.trim() });
       } else {
         // Fallback to original API
-        const data = await galaApi.checkSupporter(targetUuid.trim()) as any;
-        const name = data.data?.name;
-        if (name && data.ok !== false) { setTargetInfo({ name, avatar: data.data?.avatar || "", uuid: targetUuid.trim() }); }
-        else { toast.error("لم يتم العثور على المستخدم"); }
+        try {
+          const data = await galaApi.checkSupporter(targetUuid.trim()) as any;
+          const name = data.data?.name || ("مستخدم #" + targetUuid.trim());
+          if (data.ok !== false) { setTargetInfo({ name, avatar: data.data?.avatar || "", uuid: targetUuid.trim() }); }
+          else { toast.error("لم يتم العثور على المستخدم"); }
+        } catch {
+          toast.error("لم يتم العثور على المستخدم");
+        }
       }
     } catch { /* silent on auto-search */ }
     finally { setTargetSearching(false); }
