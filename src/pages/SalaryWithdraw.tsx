@@ -149,7 +149,7 @@ const SALARY_COUNTRIES: SalaryCountry[] = [
 const COUNTRY_FLAGS: Record<string, string> = {
   ye: "🇾🇪", sa: "🇸🇦", qa: "🇶🇦", om: "🇴🇲", ae: "🇦🇪",
   kw: "🇰🇼", bh: "🇧🇭", dz: "🇩🇿", ma: "🇲🇦", eg: "🇪🇬",
-  tn: "🇹🇳", us: "🇺🇸", intl: "🌍",
+  tn: "🇹🇳", sy: "🇸🇾", us: "🇺🇸", intl: "🌍",
 };
 
 const BANK_ICONS: Record<string, { icon: string; color: string }> = {
