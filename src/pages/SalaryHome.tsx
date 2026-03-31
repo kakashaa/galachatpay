@@ -333,7 +333,7 @@ const SalaryHome: React.FC = () => {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.05 + i * 0.04 }}
-                    onClick={() => !opt.locked && navigate(`${opt.route}${salaryTab === "agency" ? "?type=agency" : ""}`)}
+                    onClick={() => !opt.locked && navigate(opt.route)}
                     disabled={opt.locked}
                     className={`relative p-3.5 rounded-2xl flex flex-col items-start gap-2 transition-all ${
                       opt.locked ? "opacity-40 cursor-not-allowed" : "active:scale-95"

@@ -197,8 +197,7 @@ const SalaryWithdraw: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusData, setStatusData] = useState<WithdrawStatusData | null>(null);
-  const urlType = new URLSearchParams(location.search).get("type");
-  const [salaryType, setSalaryType] = useState<SalaryType>(urlType === "agency" ? "agency" : "host");
+  const [salaryType, setSalaryType] = useState<SalaryType>("host");
   const [transfers, setTransfers] = useState<TransferItem[]>([]);
   const [expiredTransfers, setExpiredTransfers] = useState<TransferItem[]>([]);
   const [expiredCashCount, setExpiredCashCount] = useState(0);
@@ -206,8 +205,6 @@ const SalaryWithdraw: React.FC = () => {
   const [selectedTransfer, setSelectedTransfer] = useState<TransferItem | null>(null);
   const [localUsedIds, setLocalUsedIds] = useState<Set<string>>(new Set());
   const [selectedCountry, setSelectedCountry] = useState("");
-  const [selectedExpired, setSelectedExpired] = useState<any>(null);
-  const [expiredFilter, setExpiredFilter] = useState("all");
   const [selectedBank, setSelectedBank] = useState("");
   const [customBankName, setCustomBankName] = useState("");
   const [recipientName, setRecipientName] = useState("");
@@ -241,24 +238,15 @@ const SalaryWithdraw: React.FC = () => {
     };
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", handleVisibility);
-    // Set verified phone if available
-    if (verifiedPhone) {
-      setWhatsappNumber(verifiedPhone);
-      setWhatsappCode("");
-    }
-
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleVisibility);
     };
+    if (verifiedPhone) {
+      setWhatsappNumber(verifiedPhone);
+      setWhatsappCode("");
+    }
   }, [user?.uuid, verifiedPhone]);
-
-  // Auto-refresh timer every 30 seconds to keep countdown live
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const checkCashResetOverrides = async () => {
     if (!user?.uuid) return;
@@ -288,19 +276,13 @@ const SalaryWithdraw: React.FC = () => {
       const hostAvail = data.host_salary?.available || 0;
       const agencyAvail = data.agency_salary?.pool_available || 0;
       const isAgency = data.is_agency_owner || false;
-      if (urlType === "agency" && isAgency && agencyAvail > 0) {
-        setSalaryType("agency");
-      } else if (hostAvail <= 0 && isAgency && agencyAvail > 0) {
-        setSalaryType("agency");
-      }
+      if (hostAvail <= 0 && isAgency && agencyAvail > 0) setSalaryType("agency");
       if (pathMode === "cash") {
         // Skip no_salary check — user may have valid transfers
       } else {
         // Skip no_salary check
       }
-      if (urlType === "agency" && isAgency && agencyAvail > 0) {
-        setSalaryType("agency"); setStep("select_transfer"); fetchTransfers();
-      } else if (isAgency && agencyAvail > 0 && hostAvail > 0 && !urlType) {
+      if (isAgency && agencyAvail > 0 && hostAvail > 0) {
         setStep("select_type");
       } else if (isAgency && agencyAvail > 0 && hostAvail <= 0) {
         setSalaryType("agency"); setStep("select_transfer"); fetchTransfers();
@@ -318,7 +300,7 @@ const SalaryWithdraw: React.FC = () => {
     try {
       const [apiData, usedRes] = await Promise.all([
         galaApi.userTransfers(user.uuid) as any,
-        supabase.from("salary_requests").select("transfer_id, status, is_final_rejection, transfer_image_url, rejection_image_url, admin_note, receipt_url").eq("user_uuid", user.uuid),
+        supabase.from("salary_requests").select("transfer_id, status, is_final_rejection").eq("user_uuid", user.uuid),
       ]);
       const usedIds = new Set([...(usedRes.data || []).map((r: any) => r.transfer_id).filter(Boolean), ...localUsedIds]);
       const today = new Date().toISOString().slice(0, 10);
@@ -353,8 +335,8 @@ const SalaryWithdraw: React.FC = () => {
           return true;
         }).map(mapTransfer);
       setTransfers(list);
-      const usedStatusMap = new Map<string, any>();
-      (usedRes.data || []).forEach((r: any) => { if (r.transfer_id) usedStatusMap.set(String(r.transfer_id), { status: r.status || "pending", transfer_image_url: r.transfer_image_url || r.receipt_url || null, rejection_image_url: r.rejection_image_url || null, admin_note: r.admin_note || null }); });
+      const usedStatusMap = new Map<string, string>();
+      (usedRes.data || []).forEach((r: any) => { if (r.transfer_id) usedStatusMap.set(String(r.transfer_id), r.status || "pending"); });
       const expiredList: TransferItem[] = allTransfers
         .filter((t: any) => {
           const toUuid = String(t.to_uuid || t.receiver_uuid || "");
@@ -372,8 +354,8 @@ const SalaryWithdraw: React.FC = () => {
         .filter((t: any) => !list.some((l: any) => l.reference_id === String(t.reference_id || t.id || "")))
         .map((t: any) => {
           const refId = String(t.reference_id || t.id || "");
-          const usedData = usedStatusMap.get(refId);
-          return { ...mapTransfer(t), usedStatus: usedData?.status || (t.is_used ? "used" : "expired"), transfer_image_url: usedData?.transfer_image_url || null, rejection_image_url: usedData?.rejection_image_url || null, admin_note: usedData?.admin_note || null };
+          const usedStatus = usedStatusMap.get(refId);
+          return { ...mapTransfer(t), usedStatus: usedStatus || (t.is_used ? "used" : "expired") };
         });
       setExpiredTransfers(expiredList);
       if (isCashMode) { setExpiredCashCount(expiredList.length); } else { setExpiredCashCount(0); }
@@ -816,31 +798,7 @@ const SalaryWithdraw: React.FC = () => {
               <h3 className="text-xs font-bold flex items-center gap-1.5" style={{ color: "rgba(233,193,118,0.6)" }}>
                 <Clock className="w-3.5 h-3.5" /> حوالات سابقة ({expiredTransfers.length})
               </h3>
-              {/* Filter tabs */}
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                {[
-                  { key: "all", label: "الكل" },
-                  { key: "approved", label: "✅ مقبول" },
-                  { key: "pending", label: "⏳ قيد المراجعة" },
-                  { key: "rejected", label: "❌ مرفوض" },
-                ].map(tab => (
-                  <button key={tab.key} onClick={() => setExpiredFilter(tab.key)}
-                    className="shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all"
-                    style={{
-                      background: expiredFilter === tab.key ? "rgba(233,193,118,0.12)" : "rgba(255,255,255,0.03)",
-                      color: expiredFilter === tab.key ? "#e9c176" : "#78839c",
-                      border: expiredFilter === tab.key ? "1px solid rgba(233,193,118,0.25)" : "1px solid rgba(255,255,255,0.05)",
-                    }}>{tab.label}</button>
-                ))}
-              </div>
-              {expiredTransfers.filter((t: any) => {
-                if (expiredFilter === "all") return true;
-                const us = t.usedStatus;
-                if (expiredFilter === "approved") return us === "approved" || us === "delivered" || us === "used" || t.is_used;
-                if (expiredFilter === "pending") return us === "pending" || us === "review";
-                if (expiredFilter === "rejected") return us === "rejected";
-                return true;
-              }).map((t: any, i: number) => {
+              {expiredTransfers.map((t: any, i: number) => {
                 const _td2 = t.time ? new Date(t.time) : null;
                 const timeStr = (_td2 && !isNaN(_td2.getTime())) ? _td2.toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
                 const us = t.usedStatus;
@@ -852,19 +810,20 @@ const SalaryWithdraw: React.FC = () => {
                 const statusLabel = isApproved ? "✅ تم الاستلام" : isRejected ? "❌ تم الرفض" : isPending ? "⏳ قيد المراجعة" : isSpent ? "✅ تم الصرف" : isExpiredTime ? "⏰ انتهى الوقت" : "منتهية الصلاحية";
                 const statusColor = isApproved ? successText : isRejected ? errorText : isPending ? goldText : isSpent ? successText : isExpiredTime ? errorText : goldText;
                 return (
-                  <div key={t.reference_id || i} className="w-full rounded-xl p-3 text-right cursor-pointer active:scale-[0.98] transition-transform"
-                    onClick={() => { setSelectedExpired(t); }}
-                    style={{ ...cardSurface, opacity: 0.85 }}>
+                  <div key={t.reference_id || i} className="w-full rounded-xl p-3 text-right"
+                    onClick={() => { if (isExpiredTime) navigate("/support"); }}
+                    style={{ ...cardSurface, cursor: isExpiredTime ? "pointer" : "default", opacity: 0.7 }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <p className="text-xs font-bold" dir="ltr" style={surfaceText}>${(t.usd || t.amount || 0).toFixed(2)}</p>
+                          <p className="text-xs font-bold" dir="ltr" style={{ ...surfaceText, opacity: 0.7 }}>${(t.usd || t.amount || 0).toFixed(2)}</p>
                           <p className="text-[9px] font-mono" style={mutedText}>#{t.reference_id}</p>
                         </div>
                       </div>
                       <div className="text-left">
                         <p className="text-[10px] font-bold" style={statusColor}>{statusLabel}</p>
                         <p className="text-[9px]" style={mutedText}>{timeStr}</p>
+                        {isExpiredTime && <p className="text-[9px] font-bold mt-0.5" style={errorText}>اضغط للتواصل مع الإدارة →</p>}
                       </div>
                     </div>
                   </div>
@@ -895,7 +854,7 @@ const SalaryWithdraw: React.FC = () => {
             </motion.div>
           )}
 
-          {/* SalaryRequestsHistory removed — expired transfers section above already shows all history */}
+          <SalaryRequestsHistory userUuid={user.uuid} />
 
           <SubmissionOverlay visible={processing} title="جاري تنفيذ العملية" activeStep={processStage === "check" ? 0 : 1}
             steps={[
@@ -903,51 +862,6 @@ const SalaryWithdraw: React.FC = () => {
               { label: "جاري تسجيل العملية...", completedLabel: "تم التسجيل ✓", icon: <></> },
             ]} />
           {termsDialog}
-
-          {/* Expired Transfer Detail Sheet */}
-          {selectedExpired && (
-            <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedExpired(null); }}>
-              <div className="w-full max-w-md rounded-t-3xl p-5 space-y-4 max-h-[80vh] overflow-y-auto" style={{ background: "#10141a" }}>
-                <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-bold" style={surfaceText}>تفاصيل الحوالة</h3>
-                  <button onClick={() => setSelectedExpired(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)" }}>✕</button>
-                </div>
-                <div className="text-center py-2">
-                  <p className="text-2xl font-extrabold" dir="ltr" style={goldText}>${(selectedExpired.usd || selectedExpired.amount || 0).toFixed(2)}</p>
-                  <p className="text-xs font-mono mt-1" style={mutedText}>#{selectedExpired.reference_id}</p>
-                </div>
-                {[
-                  { label: "الحالة", value: selectedExpired.usedStatus === "approved" || selectedExpired.usedStatus === "delivered" ? "✅ تم الاستلام" : selectedExpired.usedStatus === "rejected" ? "❌ مرفوض" : selectedExpired.usedStatus === "pending" || selectedExpired.usedStatus === "review" ? "⏳ قيد المراجعة" : "تم الصرف" },
-                  { label: "التاريخ", value: selectedExpired.time ? (() => { const d = new Date(selectedExpired.time); return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }); })() : "—" },
-                  ...(selectedExpired.admin_note ? [{ label: "ملاحظة الإدارة", value: selectedExpired.admin_note }] : []),
-                ].map((r, i) => (
-                  <div key={i} className="flex justify-between items-center rounded-2xl p-3" style={{ background: "rgba(15,26,46,0.6)" }}>
-                    <span className="text-xs" style={mutedText}>{r.label}</span>
-                    <span className="text-xs font-bold" style={surfaceText}>{r.value}</span>
-                  </div>
-                ))}
-                {selectedExpired.transfer_image_url && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold" style={successText}>إيصال التحويل:</p>
-                    <a href={selectedExpired.transfer_image_url} target="_blank" rel="noopener noreferrer">
-                      <img src={selectedExpired.transfer_image_url} alt="receipt" className="w-full max-h-[400px] object-contain rounded-xl border cursor-pointer" style={{ borderColor: "rgba(74,225,131,0.2)" }} />
-                    </a>
-                  </div>
-                )}
-                {selectedExpired.rejection_image_url && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold" style={errorText}>صورة الرفض:</p>
-                    <a href={selectedExpired.rejection_image_url} target="_blank" rel="noopener noreferrer">
-                      <img src={selectedExpired.rejection_image_url} alt="rejection" className="w-full max-h-[400px] object-contain rounded-xl border cursor-pointer" style={{ borderColor: "rgba(255,180,171,0.2)" }} />
-                    </a>
-                  </div>
-                )}
-                {selectedExpired.usedStatus === "rejected" && (
-                  <p className="text-[10px] text-center" style={mutedText}>تم رفض هذه الحوالة — يمكنك التواصل مع الإدارة عبر الدعم</p>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </MobileLayout>
     );

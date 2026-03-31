@@ -437,7 +437,7 @@ const InstantRequest: React.FC = () => {
                         <span className="text-lg font-black text-foreground" dir="ltr">${t.amount_usd}</span>
                       </div>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-muted-foreground">{t.time && !isNaN(new Date(t.time).getTime()) ? new Date(t.time).toLocaleDateString("ar-EG") : "—"}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(t.time).toLocaleDateString("ar")}</span>
                         <div className="flex items-center gap-1 text-xs text-amber-400">
                           <Coins className="w-3.5 h-3.5" />
                           <span className="font-bold">{(t.amount_usd * COINS_PER_DOLLAR).toLocaleString()} كوينز</span>
