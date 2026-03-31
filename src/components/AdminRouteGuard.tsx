@@ -16,6 +16,7 @@ const PAGE_ROLES: Record<string, string[]> = {
   "/admin/gifts": ["owner"],
   "/admin/vip": ["owner", "super_admin"],
   "/admin/ban": ["owner", "super_admin"],
+  "/admin/login-bans": ["owner", "super_admin"],
   "/admin/id-change": ["owner", "super_admin"],
   "/admin/log": ["owner", "super_admin"],
   "/admin/monitor": ["owner", "super_admin"],
