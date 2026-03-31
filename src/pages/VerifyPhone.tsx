@@ -244,12 +244,12 @@ const VerifyPhone: React.FC = () => {
     newDigits[index] = value.slice(-1);
     setOtpDigits(newDigits);
 
-    if (value && index < 5) {
+    if (value && index < 3) {
       otpRefs.current[index + 1]?.focus();
     }
 
     // Auto-submit when all filled
-    if (newDigits.every((d) => d !== "") && newDigits.join("").length === 6) {
+    if (newDigits.every((d) => d !== "") && newDigits.join("").length === 4) {
       setTimeout(() => verifyOtp(), 150);
     }
   };
@@ -262,14 +262,11 @@ const VerifyPhone: React.FC = () => {
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (pasted.length === 6) {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    if (pasted.length === 4) {
       setOtpDigits(pasted.split(""));
-      otpRefs.current[5]?.focus();
-      setTimeout(() => {
-        const code = pasted;
-        if (code.length === 6) verifyOtp();
-      }, 150);
+      otpRefs.current[3]?.focus();
+      setTimeout(() => verifyOtp(), 150);
     }
   };
 
