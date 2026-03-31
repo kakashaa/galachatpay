@@ -251,6 +251,13 @@ const SalaryWithdraw: React.FC = () => {
     }
   }, [user?.uuid, verifiedPhone]);
 
+  // Auto-refresh timer every 30 seconds to keep countdown live
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const checkCashResetOverrides = async () => {
     if (!user?.uuid) return;
     const now = new Date();
