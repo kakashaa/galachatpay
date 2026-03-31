@@ -232,26 +232,42 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             amount_coins: r.amount_coins || undefined,
           }));
 
+        // Get status + images from Supabase for all transfers
+        const allTransferRefs = ((transfersRes.transfers || []) as any[]).map((t: any) => String(t.reference_id)).filter(Boolean);
+        const { data: supaTransfers } = allTransferRefs.length > 0
+          ? await supabase.from("salary_requests").select("transfer_id, status, transfer_image_url, rejection_image_url, admin_note, request_type, amount_usd").in("transfer_id", allTransferRefs)
+          : { data: [] };
+        const supaMap = new Map<string, any>();
+        (supaTransfers || []).forEach((r: any) => { if (r.transfer_id) supaMap.set(String(r.transfer_id), r); });
+
         const usedTransfers: SalaryRequest[] = ((transfersRes.transfers || []) as any[])
-          .filter((t: any) => t.is_used)
           .filter((t: any) => {
             const ref = String(t.reference_id);
-            return !externalIds.has(ref) && !externalRefs.has(ref)
+            // Include if: has Supabase record OR is_used
+            return (supaMap.has(ref) || t.is_used) && !externalIds.has(ref) && !externalRefs.has(ref)
               && !localData.some((l: any) => l.transfer_id === ref || l.transaction_id === ref);
           })
-          .map((t: any) => ({
-            id: `#${t.reference_id}`,
-            amount: t.amount_usd || 0,
-            status: "approved",
-            bank: "شحن كوينزات",
-            country: "",
-            created_at: t.time ? new Date(t.time).toISOString() : new Date().toISOString(),
-            reference_id: String(t.reference_id),
-            amount_coins: t.amount_coins || undefined,
-            request_type: t.request_type || "charge_self",
-            target_name: t.target_name || undefined,
-            target_uuid: t.target_uuid || undefined,
-          }));
+          .map((t: any) => {
+            const ref = String(t.reference_id);
+            const supa = supaMap.get(ref);
+            const status = supa?.status || (t.is_used ? "approved" : "pending");
+            return {
+              id: `#${t.reference_id}`,
+              amount: supa?.amount_usd || t.amount_usd || 0,
+              status,
+              bank: (supa?.request_type === "cash" || t.request_type === "cash") ? "سحب نقدي" : "شحن كوينزات",
+              country: "",
+              created_at: t.time ? new Date(t.time).toISOString() : new Date().toISOString(),
+              reference_id: ref,
+              amount_coins: t.amount_coins || undefined,
+              request_type: supa?.request_type || t.request_type || "charge_self",
+              target_name: t.target_name || undefined,
+              target_uuid: t.target_uuid || undefined,
+              transfer_image_url: supa?.transfer_image_url || undefined,
+              rejection_image_url: supa?.rejection_image_url || undefined,
+              admin_note: supa?.admin_note || undefined,
+            };
+          });
 
         const all = [...externalRequests, ...localRequests, ...usedTransfers].sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -386,6 +402,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                 <div className="flex-1 min-w-0 text-right">
                   <p className="text-xs font-bold truncate" style={{ color: "#dfe2eb" }}>{bankLabel || "عملية"}</p>
                   <p className="text-[10px] mt-0.5" style={{ color: "#78839c" }}>{dateStr}</p>
+                  {req.reference_id && <p className="text-[9px] font-mono mt-0.5" style={{ color: "rgba(120,131,156,0.6)" }}>#{req.reference_id}</p>}
                   {isPending && (
                     <p className="text-[9px] mt-1 animate-pulse" style={{ color: "rgba(233,193,118,0.7)" }}>جاري المراجعة...</p>
                   )}
@@ -487,14 +504,14 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
               {selectedReq.status === "rejected" && selectedReq.rejection_image_url && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold" style={{ color: "#ffb4ab" }}>صورة توضيحية:</p>
-                  <img src={selectedReq.rejection_image_url} alt="rejection" className="w-full max-h-[200px] object-contain rounded-xl border border-red-500/20" />
+                  <img src={selectedReq.rejection_image_url} alt="rejection" className="w-full max-h-[400px] object-contain rounded-xl border border-red-500/20 cursor-pointer" onClick={() => window.open(selectedReq.rejection_image_url || "", "_blank")} />
                 </div>
               )}
 
-              {selectedReq.status === "approved" && selectedReq.transfer_image_url && (
+              {["approved","delivered","completed","done"].includes(selectedReq.status) && selectedReq.transfer_image_url && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold" style={{ color: "#4ae183" }}>إيصال التحويل:</p>
-                  <img src={selectedReq.transfer_image_url} alt="receipt" className="w-full max-h-[200px] object-contain rounded-xl border border-emerald-500/20" />
+                  <img src={selectedReq.transfer_image_url} alt="receipt" className="w-full max-h-[400px] object-contain rounded-xl border border-emerald-500/20 cursor-pointer" onClick={() => window.open(selectedReq.transfer_image_url || "", "_blank")} />
                 </div>
               )}
 
