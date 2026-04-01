@@ -520,7 +520,7 @@ const SalaryWithdraw: React.FC = () => {
           const sDate = new Date(sMs);
           const sMonth = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, "0")}`;
           const cashUsedKey = `cash_used:${user!.uuid}:${salaryType}:${sMonth}`;
-          await supabase.from("app_settings").upsert({ key: cashUsedKey, value: "true", updated_at: new Date().toISOString() }, { onConflict: "key" }).catch(() => {});
+          try { await supabase.from("app_settings").upsert({ key: cashUsedKey, value: "true", updated_at: new Date().toISOString() }, { onConflict: "key" }); } catch {}
         }
       } catch (saveErr) { console.warn("Failed to save salary request:", saveErr); toast.warning("تم السحب لكن فشل حفظ السجل — تواصل مع الأدمن"); }
       setLocalUsedIds(prev => new Set([...prev, selectedTransfer.reference_id]));
