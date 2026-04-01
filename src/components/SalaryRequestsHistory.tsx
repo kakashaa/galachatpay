@@ -274,6 +274,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
+        console.log("SalaryRequestsHistory DEBUG:", { externalCount: externalRequests.length, localCount: localRequests.length, transferCount: usedTransfers.length, totalCount: all.length, selectedMonth, monthStart, monthEnd });
         setRequests(all);
 
         const withdrawn = all
