@@ -200,8 +200,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             .eq("user_uuid", userUuid)
             .gte("created_at", monthStart)
             .lt("created_at", monthEnd)
-            .order("created_at", { ascending: false })
-            .then(res => res).catch(() => ({ data: [], error: null })),
+            .order("created_at", { ascending: false }),
           galaApi.userTransfers(userUuid).catch(() => ({})),
         ]);
 
