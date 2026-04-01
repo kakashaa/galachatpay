@@ -294,13 +294,33 @@ const SalaryWithdraw: React.FC = () => {
         return;
       }
 
-      // Per-user cash lock check
+      setStatusData(data);
+      const hostAvail = data.host_salary?.available || 0;
+      const agencyAvail = data.agency_salary?.pool_available || 0;
+      const isAgency = data.is_agency_owner || false;
+      if (hostAvail <= 0 && isAgency && agencyAvail > 0) setSalaryType("agency");
+
+      // Per-user cash lock check — AFTER salaryType is determined
       if (pathMode === "cash") {
-        const saudiMs = Date.now() + (new Date().getTimezoneOffset() * 60000) + (3 * 3600000);
-        const saudiMonth = new Date(saudiMs);
-        const lockMonth = `${saudiMonth.getFullYear()}-${String(saudiMonth.getMonth() + 1).padStart(2, "0")}`;
-        const { data: userLock } = await supabase.from("app_settings").select("value").eq("key", `cash_lock:${user!.uuid}:${salaryType}:${lockMonth}`).maybeSingle();
-        if (userLock?.value === "true") {
+        const lockMs = Date.now() + (new Date().getTimezoneOffset() * 60000) + (3 * 3600000);
+        const lockDate = new Date(lockMs);
+        const lockMonth = `${lockDate.getFullYear()}-${String(lockDate.getMonth() + 1).padStart(2, "0")}`;
+        const effectiveType = (hostAvail <= 0 && isAgency && agencyAvail > 0) ? "agency" : "host";
+
+        const [hostLock, agencyLock] = await Promise.all([
+          supabase.from("app_settings").select("value").eq("key", `cash_lock:${user!.uuid}:host:${lockMonth}`).maybeSingle(),
+          supabase.from("app_settings").select("value").eq("key", `cash_lock:${user!.uuid}:agency:${lockMonth}`).maybeSingle(),
+        ]);
+
+        console.log("CASH_LOCK_DEBUG:", { uuid: user!.uuid, lockMonth, effectiveType, hostLockKey: `cash_lock:${user!.uuid}:host:${lockMonth}`, hostLockVal: hostLock.data?.value, agencyLockKey: `cash_lock:${user!.uuid}:agency:${lockMonth}`, agencyLockVal: agencyLock.data?.value });
+
+        if (effectiveType === "host" && hostLock.data?.value === "true") {
+          setError("السحب النقدي مغلق لحسابك من الإدارة");
+          setStep("error");
+          setLoading(false);
+          return;
+        }
+        if (effectiveType === "agency" && agencyLock.data?.value === "true") {
           setError("السحب النقدي مغلق لحسابك من الإدارة");
           setStep("error");
           setLoading(false);
@@ -308,11 +328,6 @@ const SalaryWithdraw: React.FC = () => {
         }
       }
 
-      setStatusData(data);
-      const hostAvail = data.host_salary?.available || 0;
-      const agencyAvail = data.agency_salary?.pool_available || 0;
-      const isAgency = data.is_agency_owner || false;
-      if (hostAvail <= 0 && isAgency && agencyAvail > 0) setSalaryType("agency");
       if (pathMode === "cash") {
         // Skip no_salary check — user may have valid transfers
       } else {
