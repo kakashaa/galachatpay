@@ -285,12 +285,27 @@ const SalaryWithdraw: React.FC = () => {
     try {
       const data: WithdrawStatusData = await galaApi.withdrawStatus(user!.uuid) as any;
 
-      const { data: lockSetting } = await supabase.from("app_settings").select("value").eq("key", "global_cash_lock").maybeSingle();
-      if (lockSetting?.value === "true" && pathMode === "cash") {
+      // Global cash lock check
+      const { data: globalLock } = await supabase.from("app_settings").select("value").eq("key", "global_cash_lock").maybeSingle();
+      if (globalLock?.value === "true" && pathMode === "cash") {
         setError("السحب النقدي مغلق حالياً من الإدارة");
         setStep("error");
         setLoading(false);
         return;
+      }
+
+      // Per-user cash lock check
+      if (pathMode === "cash") {
+        const saudiMs = Date.now() + (new Date().getTimezoneOffset() * 60000) + (3 * 3600000);
+        const saudiMonth = new Date(saudiMs);
+        const lockMonth = `${saudiMonth.getFullYear()}-${String(saudiMonth.getMonth() + 1).padStart(2, "0")}`;
+        const { data: userLock } = await supabase.from("app_settings").select("value").eq("key", `cash_lock:${user!.uuid}:${salaryType}:${lockMonth}`).maybeSingle();
+        if (userLock?.value === "true") {
+          setError("السحب النقدي مغلق لحسابك من الإدارة");
+          setStep("error");
+          setLoading(false);
+          return;
+        }
       }
 
       setStatusData(data);
