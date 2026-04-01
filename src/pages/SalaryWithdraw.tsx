@@ -300,25 +300,27 @@ const SalaryWithdraw: React.FC = () => {
       const isAgency = data.is_agency_owner || false;
       if (hostAvail <= 0 && isAgency && agencyAvail > 0) setSalaryType("agency");
 
-      // Per-user cash lock check — override cash_used flags so user sees 🔒
+      // Per-user cash lock + cash_used check — override cash_used flags so user sees 🔒
       if (pathMode === "cash") {
         const lockMs = Date.now() + (new Date().getTimezoneOffset() * 60000) + (3 * 3600000);
         const lockDate = new Date(lockMs);
         const lockMonth = `${lockDate.getFullYear()}-${String(lockDate.getMonth() + 1).padStart(2, "0")}`;
 
-        const { data: userCashLock } = await supabase
+        const { data: cashUsedFlags } = await supabase
           .from("app_settings")
           .select("key, value")
           .in("key", [
+            `cash_used:${user!.uuid}:host:${lockMonth}`,
+            `cash_used:${user!.uuid}:agency:${lockMonth}`,
             `cash_lock:${user!.uuid}:host:${lockMonth}`,
             `cash_lock:${user!.uuid}:agency:${lockMonth}`,
           ]);
 
-        if (userCashLock && userCashLock.length > 0) {
-          const hostLocked = userCashLock.some(r => r.key?.includes(":host:") && r.value === "true");
-          const agencyLocked = userCashLock.some(r => r.key?.includes(":agency:") && r.value === "true");
-          if (hostLocked && data.host_salary) data.host_salary.cash_used_this_month = true;
-          if (agencyLocked && data.agency_salary) data.agency_salary.cash_used_this_month = true;
+        if (cashUsedFlags && cashUsedFlags.length > 0) {
+          const hostUsed = cashUsedFlags.some((r: any) => r.key?.includes(":host:") && r.value === "true");
+          const agencyUsed = cashUsedFlags.some((r: any) => r.key?.includes(":agency:") && r.value === "true");
+          if (hostUsed && data.host_salary) data.host_salary.cash_used_this_month = true;
+          if (agencyUsed && data.agency_salary) data.agency_salary.cash_used_this_month = true;
         }
       }
 
@@ -512,6 +514,14 @@ const SalaryWithdraw: React.FC = () => {
           target_name: targetName,
           admin_note: `حوالة يدوية #${selectedTransfer.reference_id} | ${salaryType === "agency" ? "وكالة" : "مضيف"} | ${notes || ""}`.trim(),
         } as any);
+        // Mark cash as used for this month in app_settings
+        if (pathMode === "cash") {
+          const sMs = Date.now() + (new Date().getTimezoneOffset() * 60000) + (3 * 3600000);
+          const sDate = new Date(sMs);
+          const sMonth = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, "0")}`;
+          const cashUsedKey = `cash_used:${user!.uuid}:${salaryType}:${sMonth}`;
+          try { await supabase.from("app_settings").upsert({ key: cashUsedKey, value: "true", updated_at: new Date().toISOString() }, { onConflict: "key" }); } catch {}
+        }
       } catch (saveErr) { console.warn("Failed to save salary request:", saveErr); toast.warning("تم السحب لكن فشل حفظ السجل — تواصل مع الأدمن"); }
       setLocalUsedIds(prev => new Set([...prev, selectedTransfer.reference_id]));
       setTransfers(prev => prev.filter(t => t.reference_id !== selectedTransfer.reference_id));
