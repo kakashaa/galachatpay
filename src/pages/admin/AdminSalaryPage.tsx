@@ -28,6 +28,13 @@ const AdminSalaryPage: React.FC = () => {
   const [resetUuid, setResetUuid] = useState("");
   const [resetType, setResetType] = useState<"host" | "agency">("agency");
   const [resetLoading, setResetLoading] = useState(false);
+  const [cashLocked, setCashLocked] = useState(false);
+
+  useEffect(() => {
+    supabase.from("app_settings").select("value").eq("key", "global_cash_lock").maybeSingle().then(({ data }) => {
+      if (data?.value === "true") setCashLocked(true);
+    });
+  }, []);
 
   useEffect(() => { if (subTab === "report") loadReport(); }, [subTab]);
 

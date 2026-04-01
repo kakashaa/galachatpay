@@ -284,6 +284,15 @@ const SalaryWithdraw: React.FC = () => {
     setError("");
     try {
       const data: WithdrawStatusData = await galaApi.withdrawStatus(user!.uuid) as any;
+
+      const { data: lockSetting } = await supabase.from("app_settings").select("value").eq("key", "global_cash_lock").maybeSingle();
+      if (lockSetting?.value === "true" && pathMode === "cash") {
+        setError("السحب النقدي مغلق حالياً من الإدارة");
+        setStep("error");
+        setLoading(false);
+        return;
+      }
+
       setStatusData(data);
       const hostAvail = data.host_salary?.available || 0;
       const agencyAvail = data.agency_salary?.pool_available || 0;
