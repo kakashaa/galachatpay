@@ -200,8 +200,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             .eq("user_uuid", userUuid)
             .gte("created_at", monthStart)
             .lt("created_at", monthEnd)
-            .order("created_at", { ascending: false })
-            .then(res => res).catch(() => ({ data: [], error: null })),
+            .order("created_at", { ascending: false }),
           galaApi.userTransfers(userUuid).catch(() => ({})),
         ]);
 
@@ -236,7 +235,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
         // Get status + images from Supabase for all transfers
         const allTransferRefs = ((transfersRes.transfers || []) as any[]).map((t: any) => String(t.reference_id)).filter(Boolean);
         const { data: supaTransfers } = allTransferRefs.length > 0
-          ? await supabase.from("salary_requests").select("transfer_id, status, transfer_image_url, rejection_image_url, admin_note, request_type, amount_usd").in("transfer_id", allTransferRefs).then(r => r).catch(() => ({ data: [] }))
+          ? await supabase.from("salary_requests").select("transfer_id, status, transfer_image_url, rejection_image_url, admin_note, request_type, amount_usd").in("transfer_id", allTransferRefs)
           : { data: [] };
         const supaMap = new Map<string, any>();
         (supaTransfers || []).forEach((r: any) => { if (r.transfer_id) supaMap.set(String(r.transfer_id), r); });
