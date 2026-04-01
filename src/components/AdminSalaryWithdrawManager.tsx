@@ -808,13 +808,13 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 pt-1">
-                      {req.status === "pending" && canAct && isCurrentMonth && isSuperAdmin && (
+                      {req.status === "pending" && canAct && isSuperAdmin && (
                         <button onClick={(e) => { e.stopPropagation(); setEditSheet(req); setEditAmount(String(req.amount)); }}
                           className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 transition-all active:scale-95">
                           <FileText className="w-3 h-3" /> تعديل
                         </button>
                       )}
-                      {req.status === "pending" && canAct && isCurrentMonth && isSuperAdmin ? (
+                      {req.status === "pending" && canAct && isSuperAdmin ? (
                         <button onClick={() => openDetailSheet(req)}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold bg-gradient-to-br from-amber-500/15 to-amber-600/10 text-amber-400 border border-amber-500/20 hover:from-amber-500/25 transition-all active:scale-95">
                           <Eye className="w-3 h-3" /> عرض ومعالجة
@@ -1079,7 +1079,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
               )}
 
               {/* Actions */}
-              {canAct && isCurrentMonth && detailReq.status === "pending" && isSuperAdmin && (
+              {canAct && detailReq.status === "pending" && isSuperAdmin && (
                 <div className="flex gap-2 pt-2 border-t border-white/[0.06]">
                   <Button onClick={() => { setApproveSheet(detailReq); setDetailReq(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote(""); }}
                     className="flex-1 bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-xs h-10 rounded-xl active:scale-[0.98] transition-all">
@@ -1095,7 +1095,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                   </button>
                 </div>
               )}
-              {!isCurrentMonth && detailReq.status === "pending" && (
+              {false && detailReq.status === "pending" && (
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2.5 text-center text-[10px] text-muted-foreground flex items-center justify-center gap-1.5">
                   <CalendarDays className="w-3.5 h-3.5" /> أرشيف — لا يمكن التعديل على طلبات الأشهر السابقة
                 </div>
