@@ -104,6 +104,8 @@ const SalaryHome: React.FC = () => {
     try {
       const data: WithdrawStatus = await galaApi.withdrawStatus(user!.uuid) as any;
       if (data && !(data as any)?.transient_error) {
+        // Check Supabase for cash_used / cash_lock flags
+        await applyCashFlags(data);
         setStatus(data);
         try { localStorage.setItem(`salary_cache_${user!.uuid}`, JSON.stringify(data)); } catch {}
         try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(data)); } catch {}
@@ -140,6 +142,7 @@ const SalaryHome: React.FC = () => {
             } : undefined,
             withdrawal_options: { cash_host: true, cash_agency: allData.is_agency_owner || false, coins_transfer: true, instant: true },
           };
+          await applyCashFlags(mapped);
           setStatus(mapped);
           try { localStorage.setItem(`salary_cache_${user!.uuid}`, JSON.stringify(mapped)); } catch {}
         }
@@ -148,6 +151,28 @@ const SalaryHome: React.FC = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const applyCashFlags = async (data: WithdrawStatus) => {
+    if (!user?.uuid) return;
+    const sMs = Date.now() + (new Date().getTimezoneOffset() * 60000) + (3 * 3600000);
+    const sDate = new Date(sMs);
+    const sMonth = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, "0")}`;
+    const { data: flags } = await supabase
+      .from("app_settings")
+      .select("key, value")
+      .in("key", [
+        `cash_used:${user.uuid}:host:${sMonth}`,
+        `cash_used:${user.uuid}:agency:${sMonth}`,
+        `cash_lock:${user.uuid}:host:${sMonth}`,
+        `cash_lock:${user.uuid}:agency:${sMonth}`,
+      ]);
+    if (flags && flags.length > 0) {
+      const hostUsed = flags.some((r: any) => r.key?.includes(":host:") && r.value === "true");
+      const agencyUsed = flags.some((r: any) => r.key?.includes(":agency:") && r.value === "true");
+      if (hostUsed && data.host_salary) data.host_salary.cash_used_this_month = true;
+      if (agencyUsed && data.agency_salary) data.agency_salary.cash_used_this_month = true;
     }
   };
 
