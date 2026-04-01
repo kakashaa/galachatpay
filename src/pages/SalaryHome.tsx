@@ -85,8 +85,10 @@ const SalaryHome: React.FC = () => {
   useEffect(() => {
     if (user?.uuid) {
       const now = new Date();
-      const saudiNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" }));
-      const monthKey = `${saudiNow.getFullYear()}-${String(saudiNow.getMonth() + 1).padStart(2, "0")}`;
+      // Saudi timezone = UTC+3 (no DST)
+      const saudiMs = now.getTime() + (3 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000);
+      const saudiDate = new Date(saudiMs);
+      const monthKey = `${saudiDate.getFullYear()}-${String(saudiDate.getMonth() + 1).padStart(2, "0")}`;
       supabase.from("app_settings").select("key").in("key", [
         `cash_reset:${user.uuid}:host:${monthKey}`,
         `cash_reset:${user.uuid}:agency:${monthKey}`,
