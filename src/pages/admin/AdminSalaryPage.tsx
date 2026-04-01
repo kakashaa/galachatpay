@@ -8,7 +8,7 @@ import AdminSalaryChargeManager from "@/components/AdminSalaryChargeManager";
 import AdminInstantWithdrawManager from "@/components/AdminInstantWithdrawManager";
 import { supabase } from "@/integrations/supabase/client";
 // galaApi import removed — reset now uses Supabase directly
-import { DollarSign, Loader2, TrendingUp, Wallet, CreditCard, BarChart3, Zap, Wrench, RotateCcw } from "lucide-react";
+import { DollarSign, Loader2, TrendingUp, Wallet, CreditCard, BarChart3, Zap, Wrench, RotateCcw, Lock, Unlock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,13 @@ const AdminSalaryPage: React.FC = () => {
   const [resetUuid, setResetUuid] = useState("");
   const [resetType, setResetType] = useState<"host" | "agency">("agency");
   const [resetLoading, setResetLoading] = useState(false);
+  const [cashLocked, setCashLocked] = useState(false);
+
+  useEffect(() => {
+    supabase.from("app_settings").select("value").eq("key", "global_cash_lock").maybeSingle().then(({ data }) => {
+      if (data?.value === "true") setCashLocked(true);
+    });
+  }, []);
 
   useEffect(() => { if (subTab === "report") loadReport(); }, [subTab]);
 
@@ -76,6 +83,15 @@ const AdminSalaryPage: React.FC = () => {
     } finally {
       setResetLoading(false);
     }
+  };
+
+  const handleToggleCashLock = async () => {
+    const newValue = !cashLocked;
+    try {
+      await supabase.from("app_settings").upsert({ key: "global_cash_lock", value: String(newValue), updated_at: new Date().toISOString() }, { onConflict: "key" });
+      setCashLocked(newValue);
+      toast.success(newValue ? "تم قفل السحب النقدي 🔒" : "تم فتح السحب النقدي 🔓");
+    } catch { toast.error("فشل التحديث"); }
   };
 
   return (
@@ -143,6 +159,25 @@ const AdminSalaryPage: React.FC = () => {
                 <Button onClick={handleResetCashUsed} disabled={resetLoading || !resetUuid.trim()}
                   className="w-full bg-admin-emerald hover:bg-admin-emerald/90 text-white font-bold">
                   {resetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "إعادة تعيين العداد"}
+                </Button>
+              </div>
+
+              {/* Global Cash Lock Tool */}
+              <div className="rounded-2xl p-5 space-y-4"
+                style={{ background: cashLocked ? 'linear-gradient(145deg, rgba(244,63,94,0.08), rgba(244,63,94,0.02))' : 'linear-gradient(145deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))', border: cashLocked ? '1px solid rgba(244,63,94,0.12)' : '1px solid rgba(16,185,129,0.12)' }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: cashLocked ? 'rgba(244,63,94,0.15)' : 'rgba(16,185,129,0.15)' }}>
+                    {cashLocked ? <Lock className="w-5 h-5 text-admin-rose" /> : <Unlock className="w-5 h-5 text-admin-emerald" />}
+                  </div>
+                  <div>
+                    <span className={`text-sm font-bold block ${cashLocked ? 'text-admin-rose' : 'text-admin-emerald'}`}>قفل السحب النقدي</span>
+                    <span className="text-[10px] text-muted-foreground">إيقاف السحب النقدي لجميع المستخدمين</span>
+                  </div>
+                </div>
+
+                <Button onClick={handleToggleCashLock}
+                  className={`w-full font-bold ${cashLocked ? 'bg-admin-rose hover:bg-admin-rose/90' : 'bg-admin-emerald hover:bg-admin-emerald/90'} text-white`}>
+                  {cashLocked ? "مقفل 🔒 — اضغط للفتح" : "مفتوح 🔓 — اضغط للقفل"}
                 </Button>
               </div>
             </motion.div>
