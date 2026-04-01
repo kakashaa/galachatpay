@@ -520,7 +520,20 @@ const SalaryWithdraw: React.FC = () => {
           const sDate = new Date(sMs);
           const sMonth = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, "0")}`;
           const cashUsedKey = `cash_used:${user!.uuid}:${salaryType}:${sMonth}`;
-          try { await supabase.from("app_settings").upsert({ key: cashUsedKey, value: "true", updated_at: new Date().toISOString() }, { onConflict: "key" }); } catch {}
+          const cashResetKey = `cash_reset:${user!.uuid}:${salaryType}:${sMonth}`;
+          try {
+            await supabase.from("app_settings").upsert({ key: cashUsedKey, value: "true", updated_at: new Date().toISOString() }, { onConflict: "key" });
+            // Remove any reset override so isCashUsed() reflects correctly on next visit
+            await supabase.from("app_settings").delete().eq("key", cashResetKey);
+          } catch {}
+          // Update local state immediately
+          setCashResetOverride(prev => ({ ...prev, [salaryType]: false }));
+          setStatusData(prev => {
+            if (!prev) return prev;
+            if (salaryType === "host" && prev.host_salary) return { ...prev, host_salary: { ...prev.host_salary, cash_used_this_month: true } };
+            if (salaryType === "agency" && prev.agency_salary) return { ...prev, agency_salary: { ...prev.agency_salary, cash_used_this_month: true } };
+            return prev;
+          });
         }
       } catch (saveErr) { console.warn("Failed to save salary request:", saveErr); toast.warning("تم السحب لكن فشل حفظ السجل — تواصل مع الأدمن"); }
       setLocalUsedIds(prev => new Set([...prev, selectedTransfer.reference_id]));
