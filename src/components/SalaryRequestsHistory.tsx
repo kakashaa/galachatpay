@@ -277,6 +277,39 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
         console.log("SalaryRequestsHistory DEBUG:", { externalCount: externalRequests.length, localCount: localRequests.length, transferCount: usedTransfers.length, totalCount: all.length, selectedMonth, monthStart, monthEnd });
         setRequests(all);
 
+        // Fallback: if no results, try direct Supabase query without gala-proxy
+        if (all.length === 0) {
+          try {
+            const { data: fallbackData } = await supabase
+              .from("salary_requests")
+              .select("*")
+              .eq("user_uuid", userUuid)
+              .order("created_at", { ascending: false })
+              .limit(20);
+            if (fallbackData && fallbackData.length > 0) {
+              const fallbackRequests: SalaryRequest[] = fallbackData.map((r: any) => ({
+                id: r.id?.slice(0, 13) || r.id,
+                amount: r.amount_usd || 0,
+                status: r.status || "pending",
+                bank: r.payment_method || "",
+                country: r.recipient_country || "",
+                created_at: r.created_at,
+                reference_id: r.transfer_id || r.transaction_id || undefined,
+                account_name: r.recipient_name || undefined,
+                account_number: r.payment_details || undefined,
+                admin_note: r.admin_note || undefined,
+                transfer_image_url: r.receipt_url || r.transfer_image_url || undefined,
+                rejection_image_url: r.rejection_image_url || undefined,
+                request_type: r.request_type || undefined,
+                target_name: r.target_name || undefined,
+                target_uuid: r.target_uuid || undefined,
+                amount_coins: r.amount_coins || undefined,
+              }));
+              setRequests(fallbackRequests);
+            }
+          } catch {}
+        }
+
         const withdrawn = all
           .reduce((sum, r) => sum + (r.amount || 0), 0);
         onWithdrawnCalculated?.(withdrawn);
