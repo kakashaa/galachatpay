@@ -514,6 +514,14 @@ const SalaryWithdraw: React.FC = () => {
           target_name: targetName,
           admin_note: `حوالة يدوية #${selectedTransfer.reference_id} | ${salaryType === "agency" ? "وكالة" : "مضيف"} | ${notes || ""}`.trim(),
         } as any);
+        // Mark cash as used for this month in app_settings
+        if (pathMode === "cash") {
+          const sMs = Date.now() + (new Date().getTimezoneOffset() * 60000) + (3 * 3600000);
+          const sDate = new Date(sMs);
+          const sMonth = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, "0")}`;
+          const cashUsedKey = `cash_used:${user!.uuid}:${salaryType}:${sMonth}`;
+          await supabase.from("app_settings").upsert({ key: cashUsedKey, value: "true", updated_at: new Date().toISOString() }, { onConflict: "key" }).catch(() => {});
+        }
       } catch (saveErr) { console.warn("Failed to save salary request:", saveErr); toast.warning("تم السحب لكن فشل حفظ السجل — تواصل مع الأدمن"); }
       setLocalUsedIds(prev => new Set([...prev, selectedTransfer.reference_id]));
       setTransfers(prev => prev.filter(t => t.reference_id !== selectedTransfer.reference_id));

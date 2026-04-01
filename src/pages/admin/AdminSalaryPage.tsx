@@ -68,6 +68,11 @@ const AdminSalaryPage: React.FC = () => {
         updated_at: new Date().toISOString(),
       }, { onConflict: "key" });
 
+      // Also delete cash_used and cash_lock flags
+      const cashUsedKey = `cash_used:${resetUuid.trim()}:${resetType}:${monthKey}`;
+      const cashLockKey = `cash_lock:${resetUuid.trim()}:${resetType}:${monthKey}`;
+      await supabase.from("app_settings").delete().in("key", [cashUsedKey, cashLockKey]).catch(() => {});
+
       if (error) {
         toast.error("فشل إعادة التعيين: " + error.message);
       } else {
