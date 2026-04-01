@@ -163,22 +163,43 @@ const AdminSalaryPage: React.FC = () => {
                 </Button>
               </div>
 
-              {/* Global Cash Lock Tool */}
+              {/* Per-user Cash Lock Tool */}
               <div className="rounded-2xl p-5 space-y-4"
-                style={{ background: cashLocked ? 'linear-gradient(145deg, rgba(244,63,94,0.08), rgba(244,63,94,0.02))' : 'linear-gradient(145deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))', border: cashLocked ? '1px solid rgba(244,63,94,0.12)' : '1px solid rgba(16,185,129,0.12)' }}>
+                style={{ background: 'linear-gradient(145deg, rgba(244,63,94,0.08), rgba(244,63,94,0.02))', border: '1px solid rgba(244,63,94,0.12)' }}>
                 <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: cashLocked ? 'rgba(244,63,94,0.15)' : 'rgba(16,185,129,0.15)' }}>
-                    {cashLocked ? <Lock className="w-5 h-5 text-admin-rose" /> : <Unlock className="w-5 h-5 text-admin-emerald" />}
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(244,63,94,0.15)' }}>
+                    <Lock className="w-5 h-5 text-admin-rose" />
                   </div>
                   <div>
-                    <span className={`text-sm font-bold block ${cashLocked ? 'text-admin-rose' : 'text-admin-emerald'}`}>قفل السحب النقدي</span>
-                    <span className="text-[10px] text-muted-foreground">إيقاف السحب النقدي لجميع المستخدمين</span>
+                    <span className="text-sm font-bold text-admin-rose block">قفل السحب النقدي</span>
+                    <span className="text-[10px] text-muted-foreground">إيقاف السحب النقدي لمستخدم محدد</span>
                   </div>
                 </div>
 
-                <Button onClick={handleToggleCashLock}
-                  className={`w-full font-bold ${cashLocked ? 'bg-admin-rose hover:bg-admin-rose/90' : 'bg-admin-emerald hover:bg-admin-emerald/90'} text-white`}>
-                  {cashLocked ? "مقفل 🔒 — اضغط للفتح" : "مفتوح 🔓 — اضغط للقفل"}
+                <Input
+                  placeholder="UUID المستخدم"
+                  value={lockUuid}
+                  onChange={e => setLockUuid(e.target.value)}
+                  className="bg-background/50 border-white/10 text-sm"
+                  dir="ltr"
+                />
+
+                <div className="flex gap-2">
+                  {[
+                    { key: "agency" as const, label: "وكالة" },
+                    { key: "host" as const, label: "مضيف" },
+                  ].map(t => (
+                    <button key={t.key} onClick={() => setLockType(t.key)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${lockType === t.key ? "text-admin-rose" : "text-muted-foreground"}`}
+                      style={lockType === t.key ? { background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.2)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                <Button onClick={handleLockCash} disabled={lockLoading || !lockUuid.trim()}
+                  className="w-full bg-admin-rose hover:bg-admin-rose/90 text-white font-bold">
+                  {lockLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "قفل السحب النقدي 🔒"}
                 </Button>
               </div>
             </motion.div>
