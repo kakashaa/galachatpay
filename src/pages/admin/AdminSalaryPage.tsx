@@ -81,13 +81,18 @@ const AdminSalaryPage: React.FC = () => {
     }
   };
 
-  const handleToggleCashLock = async () => {
-    const newValue = !cashLocked;
+  const handleLockCash = async () => {
+    if (!lockUuid.trim()) { toast.error("أدخل UUID"); return; }
+    setLockLoading(true);
     try {
-      await supabase.from("app_settings").upsert({ key: "global_cash_lock", value: String(newValue), updated_at: new Date().toISOString() }, { onConflict: "key" });
-      setCashLocked(newValue);
-      toast.success(newValue ? "تم قفل السحب النقدي 🔒" : "تم فتح السحب النقدي 🔓");
-    } catch { toast.error("فشل التحديث"); }
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const settingKey = `cash_lock:${lockUuid.trim()}:${lockType}:${monthKey}`;
+      const { error } = await supabase.from("app_settings").upsert({ key: settingKey, value: "true", updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) { toast.error("فشل القفل: " + error.message); }
+      else { toast.success(`🔒 تم قفل السحب النقدي لـ ${lockUuid}`); setLockUuid(""); }
+    } catch (e: any) { toast.error(e?.message || "حدث خطأ"); }
+    finally { setLockLoading(false); }
   };
 
   return (
