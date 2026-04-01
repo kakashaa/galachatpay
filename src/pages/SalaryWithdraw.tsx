@@ -260,7 +260,9 @@ const SalaryWithdraw: React.FC = () => {
   const checkCashResetOverrides = async () => {
     if (!user?.uuid) return;
     const now = new Date();
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    // Use Saudi timezone for month key
+    const saudiNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" }));
+    const monthKey = `${saudiNow.getFullYear()}-${String(saudiNow.getMonth() + 1).padStart(2, "0")}`;
     const { data } = await supabase
       .from("app_settings")
       .select("key")
