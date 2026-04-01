@@ -85,6 +85,15 @@ const AdminSalaryPage: React.FC = () => {
     }
   };
 
+  const handleToggleCashLock = async () => {
+    const newValue = !cashLocked;
+    try {
+      await supabase.from("app_settings").upsert({ key: "global_cash_lock", value: String(newValue), updated_at: new Date().toISOString() }, { onConflict: "key" });
+      setCashLocked(newValue);
+      toast.success(newValue ? "تم قفل السحب النقدي 🔒" : "تم فتح السحب النقدي 🔓");
+    } catch { toast.error("فشل التحديث"); }
+  };
+
   return (
     <AdminPageLayout title="إدارة الرواتب" accentColor="hsl(160 84% 39%)" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
