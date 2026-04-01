@@ -140,7 +140,9 @@ const getMonthOptions = () => {
 
 const getCurrentMonth = () => {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const utcMs = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const saudi = new Date(utcMs + (3 * 3600000));
+  return `${saudi.getFullYear()}-${String(saudi.getMonth() + 1).padStart(2, "0")}`;
 };
 
 const formatDateSA = (dateStr: string) => {
@@ -286,7 +288,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         supabase
           .from("salary_requests")
           .select("*")
-          .in("request_type", ["agency_cash", "agency_coins", "agency_transfer", "cash", "monthly"])
+          .in("request_type", ["agency_cash", "agency_coins", "agency_transfer", "cash", "monthly", "charge_self", "charge_other", "instant"])
           .gte("created_at", startDate)
           .lte("created_at", endDate)
           .order("created_at", { ascending: false })
