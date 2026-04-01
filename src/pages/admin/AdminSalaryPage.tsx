@@ -8,7 +8,7 @@ import AdminSalaryChargeManager from "@/components/AdminSalaryChargeManager";
 import AdminInstantWithdrawManager from "@/components/AdminInstantWithdrawManager";
 import { supabase } from "@/integrations/supabase/client";
 // galaApi import removed — reset now uses Supabase directly
-import { DollarSign, Loader2, TrendingUp, Wallet, CreditCard, BarChart3, Zap, Wrench, RotateCcw } from "lucide-react";
+import { DollarSign, Loader2, TrendingUp, Wallet, CreditCard, BarChart3, Zap, Wrench, RotateCcw, Lock, Unlock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
