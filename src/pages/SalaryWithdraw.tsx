@@ -231,6 +231,8 @@ const SalaryWithdraw: React.FC = () => {
   const hasFetchedRef = useRef(false);
   const processInFlightRef = useRef(false);
   const [cashResetOverride, setCashResetOverride] = useState<{ host: boolean; agency: boolean }>({ host: false, agency: false });
+  const [approvedExtensions, setApprovedExtensions] = useState<Set<string>>(new Set());
+  const [extensionLoading, setExtensionLoading] = useState<string | null>(null);
 
   // ── ALL LOGIC HOOKS AND FUNCTIONS — UNCHANGED ──
   useEffect(() => {
@@ -412,7 +414,7 @@ const SalaryWithdraw: React.FC = () => {
       
       // Check for approved extension requests
       if (user?.uuid) {
-        const { data: extData } = await supabase.from("app_settings").select("key, value").like("key", `extend_approved:${user.uuid}:%`).catch(() => ({ data: [] }));
+        const { data: extData } = await supabase.from("app_settings").select("key, value").like("key", `extend_approved:${user.uuid}:%`);
         if (extData && extData.length > 0) {
           const approved = new Set(extData.map((e: any) => { try { return e.key.split(":")[2]; } catch { return ""; } }).filter(Boolean));
           setApprovedExtensions(approved);
