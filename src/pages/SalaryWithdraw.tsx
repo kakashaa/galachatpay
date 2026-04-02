@@ -503,7 +503,8 @@ const SalaryWithdraw: React.FC = () => {
   const executeWithdrawal = async () => {
     if (processing || processInFlightRef.current || !selectedTransfer) return;
     const today = new Date().toISOString().slice(0, 10);
-    if (!selectedTransfer.time?.startsWith(today)) { toast.error("الحوالة قديمة — لازم تكون من اليوم. تواصل مع الإدارة."); return; }
+    const isExtended = approvedExtensions.has(String(selectedTransfer.reference_id));
+    if (!isExtended && !selectedTransfer.time?.startsWith(today)) { toast.error("الحوالة قديمة — لازم تكون من اليوم. تواصل مع الإدارة."); return; }
     processInFlightRef.current = true;
     setProcessing(true); setProcessStage("check"); setError("");
     const amount = selectedTransfer.usd || selectedTransfer.amount || 0;
