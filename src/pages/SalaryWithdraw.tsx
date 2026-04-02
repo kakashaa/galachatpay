@@ -409,6 +409,21 @@ const SalaryWithdraw: React.FC = () => {
           return { ...mapTransfer(t), usedStatus: usedData?.status || (t.is_used ? "used" : "expired"), transfer_image_url: usedData?.transfer_image_url || null, rejection_image_url: usedData?.rejection_image_url || null, admin_note: usedData?.admin_note || null };
         });
       setExpiredTransfers(expiredList);
+      
+      // Check for approved extension requests
+      if (user?.uuid) {
+        const { data: extData } = await supabase.from("app_settings").select("key, value").like("key", `extend_approved:${user.uuid}:%`).catch(() => ({ data: [] }));
+        if (extData && extData.length > 0) {
+          const approved = new Set(extData.map((e: any) => { try { return e.key.split(":")[2]; } catch { return ""; } }).filter(Boolean));
+          setApprovedExtensions(approved);
+          // Move approved extensions back to selectable transfers
+          const extended = expiredList.filter((t: any) => approved.has(String(t.reference_id)));
+          if (extended.length > 0) {
+            setTransfers(prev => [...prev, ...extended]);
+            setExpiredTransfers(prev => prev.filter((t: any) => !approved.has(String(t.reference_id))));
+          }
+        }
+      }
       if (isCashMode) { setExpiredCashCount(expiredList.length); } else { setExpiredCashCount(0); }
     } catch (err) { console.warn("Failed to fetch transfers:", err); setTransfers([]); }
     finally { setTransfersLoading(false); }
@@ -426,6 +441,20 @@ const SalaryWithdraw: React.FC = () => {
     if (salaryType === "agency") { if (cashResetOverride.agency) return false; return statusData?.agency_salary?.cash_used_this_month || false; }
     if (cashResetOverride.host) return false;
     return statusData?.host_salary?.cash_used_this_month || false;
+  };
+
+  const requestExtension = async (transfer: any) => {
+    if (!user?.uuid || !transfer.reference_id) return;
+    setExtensionLoading(transfer.reference_id);
+    try {
+      await supabase.from("app_settings").upsert({
+        key: `extend_request:${user.uuid}:${transfer.reference_id}`,
+        value: JSON.stringify({ uuid: user.uuid, name: user.name, ref: transfer.reference_id, amount: transfer.usd || transfer.amount || 0, status: "pending", requested_at: new Date().toISOString() }),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "key" });
+      toast.success("تم إرسال طلب التمديد — بانتظار موافقة الإدارة");
+    } catch { toast.error("فشل إرسال الطلب"); }
+    finally { setExtensionLoading(null); }
   };
 
   const searchTargetUser = async () => {
@@ -915,7 +944,14 @@ const SalaryWithdraw: React.FC = () => {
                       <div className="text-left">
                         <p className="text-[10px] font-bold" style={statusColor}>{statusLabel}</p>
                         <p className="text-[9px]" style={mutedText}>{timeStr}</p>
-                        {isExpiredTime && <p className="text-[9px] font-bold mt-0.5" style={errorText}>اضغط للتواصل مع الإدارة →</p>}
+                        {isExpiredTime && !t.is_used && (
+                          <button onClick={(e) => { e.stopPropagation(); requestExtension(t); }}
+                            disabled={extensionLoading === t.reference_id}
+                            className="text-[9px] font-bold mt-1 px-2 py-1 rounded-lg active:scale-95 transition-all"
+                            style={{ background: "rgba(233,193,118,0.1)", color: "#e9c176", border: "1px solid rgba(233,193,118,0.2)" }}>
+                            {extensionLoading === t.reference_id ? "جاري الإرسال..." : "📩 طلب تمديد"}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

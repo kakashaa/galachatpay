@@ -192,7 +192,7 @@ const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
 /* ═══════════════════════════════════════════════════
    TAB CONFIG
    ═══════════════════════════════════════════════════ */
-type TabKey = "pending" | "delivered" | "rejected" | "reserved" | "edited";
+type TabKey = "pending" | "delivered" | "rejected" | "reserved" | "edited" | "extensions";
 
 const TAB_CONFIG: { key: TabKey; label: string; icon: React.ReactNode; color: string; border: string; bg: string; glow: string }[] = [
   { key: "pending",   label: "انتظار",  icon: <Clock className="w-3.5 h-3.5" />,       color: "text-amber-400",   border: "border-amber-500/30",   bg: "bg-amber-500/10",   glow: "shadow-amber-500/20" },
@@ -200,6 +200,7 @@ const TAB_CONFIG: { key: TabKey; label: string; icon: React.ReactNode; color: st
   { key: "rejected",  label: "مرفوض",   icon: <XCircle className="w-3.5 h-3.5" />,      color: "text-rose-400",    border: "border-rose-500/30",    bg: "bg-rose-500/10",    glow: "shadow-rose-500/20" },
   { key: "reserved",  label: "محجوز",   icon: <Lock className="w-3.5 h-3.5" />,         color: "text-orange-400",  border: "border-orange-500/30",  bg: "bg-orange-500/10",  glow: "shadow-orange-500/20" },
   { key: "edited",    label: "معدل",    icon: <FileText className="w-3.5 h-3.5" />,     color: "text-yellow-400",  border: "border-yellow-500/30",  bg: "bg-yellow-500/10",  glow: "shadow-yellow-500/20" },
+  { key: "extensions", label: "تمديد",   icon: <Clock className="w-3.5 h-3.5" />,        color: "text-cyan-400",    border: "border-cyan-500/30",    bg: "bg-cyan-500/10",    glow: "shadow-cyan-500/20" },
 ];
 
 const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
@@ -227,6 +228,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [approveSheet, setApproveSheet] = useState<WithdrawRequest | null>(null);
   const [rejectSheet, setRejectSheet] = useState<WithdrawRequest | null>(null);
   const [editSheet, setEditSheet] = useState<WithdrawRequest | null>(null);
+  const [extensionRequests, setExtensionRequests] = useState<any[]>([]);
   const [editAmount, setEditAmount] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState("");
@@ -273,6 +275,33 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     if (s === "reserved") return "reserved";
     if (s === "review") return "pending";
     return "pending";
+  };
+
+  const fetchExtensions = async () => {
+    try {
+      const { data } = await supabase.from("app_settings").select("key, value, updated_at").like("key", "extend_request:%");
+      const exts = (data || []).map((e: any) => { try { return { ...JSON.parse(e.value), key: e.key, updated_at: e.updated_at }; } catch { return null; } }).filter(Boolean);
+      setExtensionRequests(exts);
+    } catch {}
+  };
+
+  const approveExtension = async (ext: any) => {
+    try {
+      // Save approved flag
+      await supabase.from("app_settings").upsert({ key: `extend_approved:${ext.uuid}:${ext.ref}`, value: "true", updated_at: new Date().toISOString() }, { onConflict: "key" });
+      // Update request status
+      await supabase.from("app_settings").upsert({ key: ext.key, value: JSON.stringify({ ...ext, status: "approved" }), updated_at: new Date().toISOString() }, { onConflict: "key" });
+      toast.success(`تم تمديد الحوالة #${ext.ref} لـ ${ext.name || ext.uuid}`);
+      fetchExtensions();
+    } catch { toast.error("فشل"); }
+  };
+
+  const rejectExtension = async (ext: any) => {
+    try {
+      await supabase.from("app_settings").upsert({ key: ext.key, value: JSON.stringify({ ...ext, status: "rejected" }), updated_at: new Date().toISOString() }, { onConflict: "key" });
+      toast.success("تم رفض طلب التمديد");
+      fetchExtensions();
+    } catch { toast.error("فشل"); }
   };
 
   const fetchData = useCallback(async () => {
@@ -409,7 +438,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     return result;
   };
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(); fetchExtensions(); }, [fetchData]);
 
   const fileToBase64 = async (file: File): Promise<string> => {
     const { compressImageToBase64 } = await import("@/utils/compressImage");
@@ -491,6 +520,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       if (activeTab === "rejected" && r.status !== "rejected") return false;
       if (activeTab === "reserved" && r.status !== "reserved") return false;
       if (activeTab === "edited" && !(r.admin_note || "").includes("تعديل")) return false;
+      if (activeTab === "extensions") return false; // Extensions shown separately
 
       if (search) {
         const q = search.toLowerCase();
@@ -874,6 +904,42 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ EXTENSION REQUESTS ═══ */}
+      {activeTab === "extensions" && (
+        <div className="space-y-3">
+          {extensionRequests.length === 0 ? (
+            <div className="rounded-2xl p-6 text-center" style={{ background: "rgba(15,26,46,0.4)" }}>
+              <Clock className="w-8 h-8 mx-auto mb-2 text-cyan-400/30" />
+              <p className="text-xs text-muted-foreground">لا توجد طلبات تمديد</p>
+            </div>
+          ) : (
+            extensionRequests.map((ext: any, i: number) => (
+              <div key={ext.key || i} className="rounded-2xl p-4 space-y-2" style={{ background: "#181c22", borderRight: ext.status === "approved" ? "3px solid #22d3ee" : ext.status === "rejected" ? "3px solid #f87171" : "3px solid #e9c176" }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{ext.name || ext.uuid}</p>
+                    <p className="text-[10px] font-mono text-muted-foreground">UUID: {ext.uuid} | حوالة #{ext.ref}</p>
+                  </div>
+                  <p className="text-lg font-extrabold text-cyan-400" dir="ltr">${ext.amount}</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-[9px] text-muted-foreground">{ext.requested_at ? new Date(ext.requested_at).toLocaleDateString("ar-EG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}</p>
+                  <p className="text-[10px] font-bold" style={{ color: ext.status === "approved" ? "#22d3ee" : ext.status === "rejected" ? "#f87171" : "#e9c176" }}>
+                    {ext.status === "approved" ? "✅ تم التمديد" : ext.status === "rejected" ? "❌ مرفوض" : "⏳ بانتظار الموافقة"}
+                  </p>
+                </div>
+                {ext.status === "pending" && (
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => approveExtension(ext)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 active:scale-95 transition-all">✅ تمديد</button>
+                    <button onClick={() => rejectExtension(ext)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 active:scale-95 transition-all">❌ رفض</button>
+                  </div>
+                )}
+              </div>
+            ))
           )}
         </div>
       )}
