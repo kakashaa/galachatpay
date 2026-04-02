@@ -279,7 +279,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
   const fetchExtensions = async () => {
     try {
-      const { data } = await supabase.from("app_settings").select("key, value, updated_at").like("key", "extend_request:%");
+      const { data } = await supabase.from("app_settings").select("key, value, updated_at").like("key", "extend_request:%").then(r => r, () => ({ data: [] as any[] }));
       const exts = (data || []).map((e: any) => { try { return { ...JSON.parse(e.value), key: e.key, updated_at: e.updated_at }; } catch { return null; } }).filter(Boolean);
       setExtensionRequests(exts);
     } catch {}
@@ -438,7 +438,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     return result;
   };
 
-  useEffect(() => { fetchData(); fetchExtensions(); }, [fetchData]);
+  useEffect(() => { fetchData(); try { fetchExtensions(); } catch {} }, [fetchData]);
 
   const fileToBase64 = async (file: File): Promise<string> => {
     const { compressImageToBase64 } = await import("@/utils/compressImage");
