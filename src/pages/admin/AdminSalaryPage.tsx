@@ -8,7 +8,7 @@ import AdminSalaryChargeManager from "@/components/AdminSalaryChargeManager";
 import AdminInstantWithdrawManager from "@/components/AdminInstantWithdrawManager";
 import { supabase } from "@/integrations/supabase/client";
 // galaApi import removed — reset now uses Supabase directly
-import { DollarSign, Loader2, TrendingUp, Wallet, CreditCard, BarChart3, Zap, Wrench, RotateCcw, Lock } from "lucide-react";
+import { DollarSign, Loader2, TrendingUp, Wallet, CreditCard, BarChart3, Zap, Wrench, RotateCcw, Lock, CalendarDays } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,9 @@ const AdminSalaryPage: React.FC = () => {
   const [lockUuid, setLockUuid] = useState("");
   const [lockType, setLockType] = useState<"host" | "agency">("agency");
   const [lockLoading, setLockLoading] = useState(false);
+  const [moveTransferId, setMoveTransferId] = useState("");
+  const [moveTargetMonth, setMoveTargetMonth] = useState("");
+  const [moveLoading, setMoveLoading] = useState(false);
 
   useEffect(() => { if (subTab === "report") loadReport(); }, [subTab]);
 
@@ -100,7 +103,35 @@ const AdminSalaryPage: React.FC = () => {
     finally { setLockLoading(false); }
   };
 
-  return (
+  
+  const handleMoveRequest = async () => {
+    if (!moveTransferId.trim() || !moveTargetMonth) { toast.error("أدخل الرقم المرجعي واختر الشهر"); return; }
+    setMoveLoading(true);
+    try {
+      const newDate = `${moveTargetMonth}-15T12:00:00+00:00`;
+      const { data, error } = await supabase.from("salary_requests").update({ created_at: newDate }).eq("transfer_id", moveTransferId.trim()).select();
+      if (error) throw error;
+      if (!data || data.length === 0) { toast.error("لم يتم العثور على الطلب — تأكد من الرقم المرجعي"); setMoveLoading(false); return; }
+      const monthLabel = new Date(newDate).toLocaleDateString("ar-EG", { year: "numeric", month: "long" });
+      toast.success(`✅ تم نقل #${moveTransferId} إلى ${monthLabel}`);
+      setMoveTransferId("");
+    } catch (e: any) { toast.error(e?.message || "فشل النقل"); }
+    finally { setMoveLoading(false); }
+  };
+
+  const getMoveMonthOptions = () => {
+    const months: { value: string; label: string }[] = [];
+    const now = new Date();
+    for (let i = 0; i < 4; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("ar-EG", { year: "numeric", month: "long" });
+      months.push({ value, label });
+    }
+    return months;
+  };
+
+return (
     <AdminPageLayout title="إدارة الرواتب" accentColor="hsl(160 84% 39%)" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(16,185,129,0.1)' }}>
@@ -205,6 +236,28 @@ const AdminSalaryPage: React.FC = () => {
                 <Button onClick={handleLockCash} disabled={lockLoading || !lockUuid.trim()}
                   className="w-full bg-admin-rose hover:bg-admin-rose/90 text-white font-bold">
                   {lockLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "قفل السحب النقدي 🔒"}
+                </Button>
+              </div>
+
+              {/* Tool 3: Move request to different month */}
+              <div className="rounded-2xl p-5 space-y-4 mt-4"
+                style={{ background: 'linear-gradient(145deg, rgba(96,165,250,0.08), rgba(96,165,250,0.02))', border: '1px solid rgba(96,165,250,0.12)' }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(96,165,250,0.15)' }}>
+                    <CalendarDays className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-blue-400 block">نقل طلب لشهر آخر</span>
+                    <span className="text-[10px] text-muted-foreground">نقل طلب سحب من شهر إلى شهر آخر</span>
+                  </div>
+                </div>
+                <Input placeholder="الرقم المرجعي (مثل 53375)" value={moveTransferId} onChange={e => setMoveTransferId(e.target.value)} className="bg-background/50 border-white/10 text-sm" dir="ltr" />
+                <select value={moveTargetMonth} onChange={e => setMoveTargetMonth(e.target.value)} className="w-full rounded-xl text-sm px-3 py-2.5 font-bold" style={{ background: 'rgba(255,255,255,0.04)', color: '#dfe2eb', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <option value="">اختر الشهر</option>
+                  {getMoveMonthOptions().map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+                <Button onClick={handleMoveRequest} disabled={moveLoading || !moveTransferId.trim() || !moveTargetMonth} className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold">
+                  {moveLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "نقل الطلب 📋"}
                 </Button>
               </div>
             </motion.div>
