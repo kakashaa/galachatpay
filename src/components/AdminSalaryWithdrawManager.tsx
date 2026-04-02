@@ -635,7 +635,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       <div className="grid grid-cols-4 gap-1.5">
         {TAB_CONFIG.map((tab) => {
           const isActive = activeTab === tab.key;
-          const data = tabCounts[tab.key];
+          const data = tabCounts[tab.key] || { count: 0, amount: 0 };
           return (
             <button
               key={tab.key}
