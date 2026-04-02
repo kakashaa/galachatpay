@@ -231,6 +231,8 @@ const SalaryWithdraw: React.FC = () => {
   const hasFetchedRef = useRef(false);
   const processInFlightRef = useRef(false);
   const [cashResetOverride, setCashResetOverride] = useState<{ host: boolean; agency: boolean }>({ host: false, agency: false });
+  const [approvedExtensions, setApprovedExtensions] = useState<Set<string>>(new Set());
+  const [extensionLoading, setExtensionLoading] = useState<string | null>(null);
 
   // ── ALL LOGIC HOOKS AND FUNCTIONS — UNCHANGED ──
   useEffect(() => {
