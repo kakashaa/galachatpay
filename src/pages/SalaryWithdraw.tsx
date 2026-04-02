@@ -502,9 +502,15 @@ const SalaryWithdraw: React.FC = () => {
 
   const executeWithdrawal = async () => {
     if (processing || processInFlightRef.current || !selectedTransfer) return;
-    const today = new Date().toISOString().slice(0, 10);
     const isExtended = approvedExtensions.has(String(selectedTransfer.reference_id));
-    if (!isExtended && !selectedTransfer.time?.startsWith(today)) { toast.error("الحوالة قديمة — لازم تكون من اليوم. تواصل مع الإدارة."); return; }
+    // Timezone-safe: check if within 24 hours instead of same-day string match
+    if (!isExtended && selectedTransfer.time) {
+      const rawT = selectedTransfer.time;
+      const hasTz = rawT.includes("+") || rawT.includes("Z") || rawT.includes("UTC");
+      const tTime = new Date(hasTz ? rawT : rawT + " UTC");
+      const diffH = (Date.now() - tTime.getTime()) / 3600000;
+      if (isNaN(diffH) || diffH > 24) { toast.error("الحوالة قديمة — تواصل مع الإدارة."); return; }
+    }
     processInFlightRef.current = true;
     setProcessing(true); setProcessStage("check"); setError("");
     const amount = selectedTransfer.usd || selectedTransfer.amount || 0;
