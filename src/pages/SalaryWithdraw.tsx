@@ -414,7 +414,7 @@ const SalaryWithdraw: React.FC = () => {
       
       // Check for approved extension requests
       if (user?.uuid) {
-        const { data: extData } = await supabase.from("app_settings").select("key, value").like("key", `extend_approved:${user.uuid}:%`);
+        const { data: extData } = await supabase.from("app_settings").select("key, value").like("key", `extend_approved:${user.uuid}:%`).then(r => r, () => ({ data: [] as any[] }));
         if (extData && extData.length > 0) {
           const approved = new Set(extData.map((e: any) => { try { return e.key.split(":")[2]; } catch { return ""; } }).filter(Boolean));
           setApprovedExtensions(approved);
