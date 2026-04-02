@@ -378,8 +378,9 @@ const SalaryWithdraw: React.FC = () => {
             const now = new Date();
             const diffMins = (now.getTime() - transferTime.getTime()) / 60000;
             // Grace period: allow up to 48h on first day of month (for previous month transfers)
-            const isFirstOfMonth = new Date().getDate() === 1;
-            const maxMins = isFirstOfMonth ? 2880 : 1440;
+            // First 3 days of month: extend to 72h for previous month transfers
+            const isEarlyMonth = new Date().getDate() <= 3;
+            const maxMins = isEarlyMonth ? 4320 : 1440;
             if (diffMins > maxMins) return false;
           }
           return true;
