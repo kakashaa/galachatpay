@@ -209,7 +209,10 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("pending");
   const [search, setSearch] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return sessionStorage.getItem("admin_salary_month") || getCurrentMonth();
+  });
+  useEffect(() => { sessionStorage.setItem("admin_salary_month", selectedMonth); }, [selectedMonth]);
   const isCurrentMonth = selectedMonth === getCurrentMonth();
   const monthOptions = useMemo(getMonthOptions, []);
   const [bankFilter, setBankFilter] = useState("all");
