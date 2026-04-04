@@ -1,20 +1,23 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Banner {
   id: string;
   image_url: string;
+  link_url: string | null;
 }
 
 const BannerCarousel: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [current, setCurrent] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase
         .from("banners")
-        .select("id, image_url")
+        .select("id, image_url, link_url")
         .eq("is_active", true)
         .order("display_order", { ascending: true });
       setBanners((data as any) || []);
@@ -30,6 +33,15 @@ const BannerCarousel: React.FC = () => {
     return () => clearInterval(interval);
   }, [banners.length]);
 
+  const handleClick = (banner: Banner) => {
+    if (!banner.link_url) return;
+    if (banner.link_url.startsWith("http")) {
+      window.open(banner.link_url, "_blank", "noopener");
+    } else {
+      navigate(banner.link_url);
+    }
+  };
+
   if (banners.length === 0) return null;
 
   return (
@@ -39,7 +51,8 @@ const BannerCarousel: React.FC = () => {
           key={banner.id}
           src={banner.image_url}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
+          onClick={() => handleClick(banner)}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${banner.link_url ? "cursor-pointer" : ""}`}
           style={{ opacity: idx === current ? 1 : 0 }}
         />
       ))}

@@ -29,10 +29,12 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
   const [showAdd, setShowAdd] = useState(false);
   const [addFile, setAddFile] = useState<File | null>(null);
   const [addPreview, setAddPreview] = useState<string | null>(null);
+  const [addLinkUrl, setAddLinkUrl] = useState("");
   const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
   const [editDialog, setEditDialog] = useState<string | null>(null);
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editPreview, setEditPreview] = useState<string | null>(null);
+  const [editLinkUrl, setEditLinkUrl] = useState("");
 
   const loadBanners = useCallback(async () => {
     setLoading(true);
