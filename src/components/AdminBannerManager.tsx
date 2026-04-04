@@ -287,9 +287,20 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
                 تغيير الصورة
               </Button>
             )}
+            <div>
+              <label className="text-xs font-bold text-muted-foreground mb-1 block">رابط البنر (اختياري)</label>
+              <input
+                type="text"
+                placeholder="مثال: /salary أو https://example.com"
+                value={editLinkUrl}
+                onChange={(e) => setEditLinkUrl(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-muted/30 border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50"
+                dir="ltr"
+              />
+            </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleEdit} disabled={uploading || !editFile} className="gap-2">
+            <Button onClick={handleEdit} disabled={uploading} className="gap-2">
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               تأكيد التعديل
             </Button>
