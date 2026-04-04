@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 interface Banner {
   id: string;
   image_url: string;
+  link_url: string | null;
   is_active: boolean;
   display_order: number;
   created_at: string;
