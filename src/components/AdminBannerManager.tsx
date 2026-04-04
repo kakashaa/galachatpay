@@ -171,7 +171,7 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => { setEditDialog(banner.id); setEditFile(null); setEditPreview(null); }}
+                      onClick={() => { setEditDialog(banner.id); setEditFile(null); setEditPreview(null); setEditLinkUrl(banner.link_url || ""); }}
                       className="h-8 w-8 p-0"
                     >
                       <Edit2 className="w-3.5 h-3.5 text-blue-400" />
