@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit2, Loader2, Eye, EyeOff, Upload, Image } from "lucide-react";
+import { Plus, Trash2, Edit2, Loader2, Upload, Image, Link } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 interface Banner {
   id: string;
   image_url: string;
+  link_url: string | null;
   is_active: boolean;
   display_order: number;
   created_at: string;
@@ -28,10 +29,12 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
   const [showAdd, setShowAdd] = useState(false);
   const [addFile, setAddFile] = useState<File | null>(null);
   const [addPreview, setAddPreview] = useState<string | null>(null);
+  const [addLinkUrl, setAddLinkUrl] = useState("");
   const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
   const [editDialog, setEditDialog] = useState<string | null>(null);
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editPreview, setEditPreview] = useState<string | null>(null);
+  const [editLinkUrl, setEditLinkUrl] = useState("");
 
   const loadBanners = useCallback(async () => {
     setLoading(true);
@@ -63,12 +66,13 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
       const url = await uploadImage(addFile);
       const { error } = await supabase.from("banners").insert({
         image_url: url,
+        link_url: addLinkUrl.trim() || null,
         display_order: banners.length,
         is_active: true,
       } as any);
       if (error) throw error;
       toast.success("تم إضافة البنر بنجاح");
-      setShowAdd(false); setAddFile(null); setAddPreview(null);
+      setShowAdd(false); setAddFile(null); setAddPreview(null); setAddLinkUrl("");
       loadBanners();
     } catch (err: any) { toast.error(err?.message || "فشل الإضافة"); }
     finally { setUploading(false); }
@@ -94,17 +98,20 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
   };
 
   const handleEdit = async () => {
-    if (!editDialog || !editFile) { toast.error("يرجى اختيار صورة جديدة"); return; }
+    if (!editDialog) return;
     setUploading(true);
     try {
-      const url = await uploadImage(editFile);
+      const updateData: any = { link_url: editLinkUrl.trim() || null, updated_at: new Date().toISOString() };
+      if (editFile) {
+        updateData.image_url = await uploadImage(editFile);
+      }
       const { error } = await supabase
         .from("banners")
-        .update({ image_url: url, updated_at: new Date().toISOString() } as any)
+        .update(updateData)
         .eq("id", editDialog);
       if (error) throw error;
       toast.success("تم تعديل البنر بنجاح");
-      setEditDialog(null); setEditFile(null); setEditPreview(null);
+      setEditDialog(null); setEditFile(null); setEditPreview(null); setEditLinkUrl("");
       loadBanners();
     } catch (err: any) { toast.error(err?.message || "فشل التعديل"); }
     finally { setUploading(false); }
@@ -148,37 +155,44 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
                 alt="Banner"
                 className="w-full h-32 object-cover"
               />
-              <div className="p-3 flex items-center justify-between" dir="rtl">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={banner.is_active}
-                    onCheckedChange={() => !readOnly && toggleActive(banner)}
-                    disabled={readOnly}
-                  />
-                  <span className={`text-xs font-bold ${banner.is_active ? "text-emerald-400" : "text-muted-foreground"}`}>
-                    {banner.is_active ? "مفعّل" : "معطّل"}
-                  </span>
-                </div>
-                {!readOnly && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => { setEditDialog(banner.id); setEditFile(null); setEditPreview(null); }}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Edit2 className="w-3.5 h-3.5 text-blue-400" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setDeleteDialog(banner.id)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </Button>
-                  </div>
+              <div className="p-3 space-y-1" dir="rtl">
+                {banner.link_url && (
+                  <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                    <Link className="w-3 h-3" /> {banner.link_url}
+                  </p>
                 )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={banner.is_active}
+                      onCheckedChange={() => !readOnly && toggleActive(banner)}
+                      disabled={readOnly}
+                    />
+                    <span className={`text-xs font-bold ${banner.is_active ? "text-emerald-400" : "text-muted-foreground"}`}>
+                      {banner.is_active ? "مفعّل" : "معطّل"}
+                    </span>
+                  </div>
+                  {!readOnly && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => { setEditDialog(banner.id); setEditFile(null); setEditPreview(null); setEditLinkUrl(banner.link_url || ""); }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-blue-400" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setDeleteDialog(banner.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -211,6 +225,17 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
                 تغيير الصورة
               </Button>
             )}
+            <div>
+              <label className="text-xs font-bold text-muted-foreground mb-1 block">رابط البنر (اختياري)</label>
+              <input
+                type="text"
+                placeholder="مثال: /salary أو https://example.com"
+                value={addLinkUrl}
+                onChange={(e) => setAddLinkUrl(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-muted/30 border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50"
+                dir="ltr"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={handleAddBanner} disabled={uploading || !addFile} className="gap-2">
@@ -262,9 +287,20 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
                 تغيير الصورة
               </Button>
             )}
+            <div>
+              <label className="text-xs font-bold text-muted-foreground mb-1 block">رابط البنر (اختياري)</label>
+              <input
+                type="text"
+                placeholder="مثال: /salary أو https://example.com"
+                value={editLinkUrl}
+                onChange={(e) => setEditLinkUrl(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-muted/30 border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50"
+                dir="ltr"
+              />
+            </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleEdit} disabled={uploading || !editFile} className="gap-2">
+            <Button onClick={handleEdit} disabled={uploading} className="gap-2">
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               تأكيد التعديل
             </Button>
