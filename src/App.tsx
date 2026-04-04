@@ -195,6 +195,7 @@ const App = () => {
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Login />} />
+                  <Route path="/index" element={<Dashboard />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/change-id" element={<ChangeId />} />
                   <Route path="/request-vip" element={<RequestVip />} />
