@@ -72,7 +72,7 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
       } as any);
       if (error) throw error;
       toast.success("تم إضافة البنر بنجاح");
-      setShowAdd(false); setAddFile(null); setAddPreview(null);
+      setShowAdd(false); setAddFile(null); setAddPreview(null); setAddLinkUrl("");
       loadBanners();
     } catch (err: any) { toast.error(err?.message || "فشل الإضافة"); }
     finally { setUploading(false); }
