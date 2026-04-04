@@ -98,17 +98,20 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
   };
 
   const handleEdit = async () => {
-    if (!editDialog || !editFile) { toast.error("يرجى اختيار صورة جديدة"); return; }
+    if (!editDialog) return;
     setUploading(true);
     try {
-      const url = await uploadImage(editFile);
+      const updateData: any = { link_url: editLinkUrl.trim() || null, updated_at: new Date().toISOString() };
+      if (editFile) {
+        updateData.image_url = await uploadImage(editFile);
+      }
       const { error } = await supabase
         .from("banners")
-        .update({ image_url: url, updated_at: new Date().toISOString() } as any)
+        .update(updateData)
         .eq("id", editDialog);
       if (error) throw error;
       toast.success("تم تعديل البنر بنجاح");
-      setEditDialog(null); setEditFile(null); setEditPreview(null);
+      setEditDialog(null); setEditFile(null); setEditPreview(null); setEditLinkUrl("");
       loadBanners();
     } catch (err: any) { toast.error(err?.message || "فشل التعديل"); }
     finally { setUploading(false); }
