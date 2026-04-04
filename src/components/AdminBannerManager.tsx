@@ -162,35 +162,37 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
                   </p>
                 )}
                 <div className="flex items-center justify-between">
-                  <Switch
-                    checked={banner.is_active}
-                    onCheckedChange={() => !readOnly && toggleActive(banner)}
-                    disabled={readOnly}
-                  />
-                  <span className={`text-xs font-bold ${banner.is_active ? "text-emerald-400" : "text-muted-foreground"}`}>
-                    {banner.is_active ? "مفعّل" : "معطّل"}
-                  </span>
-                </div>
-                {!readOnly && (
                   <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => { setEditDialog(banner.id); setEditFile(null); setEditPreview(null); setEditLinkUrl(banner.link_url || ""); }}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Edit2 className="w-3.5 h-3.5 text-blue-400" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setDeleteDialog(banner.id)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </Button>
+                    <Switch
+                      checked={banner.is_active}
+                      onCheckedChange={() => !readOnly && toggleActive(banner)}
+                      disabled={readOnly}
+                    />
+                    <span className={`text-xs font-bold ${banner.is_active ? "text-emerald-400" : "text-muted-foreground"}`}>
+                      {banner.is_active ? "مفعّل" : "معطّل"}
+                    </span>
                   </div>
-                )}
+                  {!readOnly && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => { setEditDialog(banner.id); setEditFile(null); setEditPreview(null); setEditLinkUrl(banner.link_url || ""); }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-blue-400" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setDeleteDialog(banner.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
