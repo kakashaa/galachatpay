@@ -155,8 +155,13 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
                 alt="Banner"
                 className="w-full h-32 object-cover"
               />
-              <div className="p-3 flex items-center justify-between" dir="rtl">
-                <div className="flex items-center gap-2">
+              <div className="p-3 space-y-1" dir="rtl">
+                {banner.link_url && (
+                  <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                    <Link className="w-3 h-3" /> {banner.link_url}
+                  </p>
+                )}
+                <div className="flex items-center justify-between">
                   <Switch
                     checked={banner.is_active}
                     onCheckedChange={() => !readOnly && toggleActive(banner)}
