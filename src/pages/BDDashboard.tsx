@@ -624,13 +624,12 @@ const BDDashboard: React.FC = () => {
                   if (!user?.uuid || liveSalaryTotal <= 0) return;
                   try {
                     const { error } = await supabase.from("works_withdrawals" as any).insert({
-                      bd_uuid: user.uuid,
-                      bd_name: bd.bd_name || "",
-                      amount: liveSalaryTotalUsd,
+                      user_uuid: user.uuid,
+                      amount_usd: liveSalaryTotalUsd,
+                      amount_coins: liveSalaryTotal,
+                      recipient_uuid: user.uuid,
                       status: "pending",
-                      transfer_type: "commission",
-                      country: withdrawMonth,
-                      admin_note: `كوينز: ${liveSalaryTotal.toLocaleString()} | شهر: ${withdrawMonth}`,
+                      admin_note: `${bd.bd_name || ""} | شهر: ${withdrawMonth}`,
                     });
                     if (error) {
                       toast.error("فشل إرسال الطلب");
