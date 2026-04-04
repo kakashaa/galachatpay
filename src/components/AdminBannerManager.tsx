@@ -66,6 +66,7 @@ const AdminBannerManager: React.FC<Props> = ({ adminSessionToken, adminUsername,
       const url = await uploadImage(addFile);
       const { error } = await supabase.from("banners").insert({
         image_url: url,
+        link_url: addLinkUrl.trim() || null,
         display_order: banners.length,
         is_active: true,
       } as any);
