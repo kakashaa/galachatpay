@@ -122,7 +122,7 @@ const handleSaveReceipt = (request: SalaryRequest) => {
         <div class="divider"></div>
         <div class="row"><span class="label">الحالة</span><span class="value"><span class="status ${statusClass}">${statusLabel}</span></span></div>
         <div class="row"><span class="label">رقم الطلب</span><span class="value">${request.id || '-'}</span></div>
-        <div class="row"><span class="label">التاريخ</span><span class="value">${new Date(request.created_at).toLocaleDateString('ar-EG')}</span></div>
+        <div class="row"><span class="label">التاريخ</span><span class="value">${new Date(request.created_at).toLocaleDateString('ar-u-ca-gregory')}</span></div>
         <div class="row"><span class="label">نوع الطلب</span><span class="value">${getRequestTypeLabel(request.request_type) || request.bank || '-'}</span></div>
         ${request.reference_id ? `<div class="row"><span class="label">المرجعي</span><span class="value">${request.reference_id}</span></div>` : ''}
         ${request.account_name ? `<div class="row"><span class="label">المستلم</span><span class="value">${request.account_name}</span></div>` : ''}
@@ -145,7 +145,7 @@ const getMonthOptions = () => {
   for (let i = 0; i < 6; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("ar-EG", { year: "numeric", month: "long" });
+    const label = d.toLocaleDateString("ar-u-ca-gregory", { year: "numeric", month: "long" });
     months.push({ value, label });
   }
   return months;
@@ -407,7 +407,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             return true;
           }).map((req, i) => {
             const st = getStatus(req.status);
-            const dateStr = new Date(req.created_at).toLocaleDateString("ar-EG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+            const dateStr = new Date(req.created_at).toLocaleDateString("ar-u-ca-gregory", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
             const bankLabel = getRequestTypeLabel(req.request_type) || req.bank || "";
             const isApproved = req.status === "approved" || req.status === "delivered";
             const isRejected = req.status === "rejected";
