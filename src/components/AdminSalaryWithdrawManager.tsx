@@ -132,7 +132,7 @@ const getMonthOptions = () => {
   for (let i = 0; i < 6; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("ar-SA", { year: "numeric", month: "long" });
+    const label = d.toLocaleDateString("ar-u-ca-gregory", { year: "numeric", month: "long" });
     months.push({ value, label });
   }
   return months;
@@ -148,7 +148,7 @@ const getCurrentMonth = () => {
 const formatDateSA = (dateStr: string) => {
   try {
     const d = new Date(dateStr);
-    return d.toLocaleString("ar-SA", {
+    return d.toLocaleString("ar-u-ca-gregory", {
       timeZone: "Asia/Riyadh",
       year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit",
@@ -930,7 +930,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                   <p className="text-lg font-extrabold text-cyan-400" dir="ltr">${ext.amount}</p>
                 </div>
                 <div className="flex items-center justify-between">
-                  <p className="text-[9px] text-muted-foreground">{ext.requested_at ? new Date(ext.requested_at).toLocaleDateString("ar-EG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}</p>
+                  <p className="text-[9px] text-muted-foreground">{ext.requested_at ? new Date(ext.requested_at).toLocaleDateString("ar-u-ca-gregory", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}</p>
                   <p className="text-[10px] font-bold" style={{ color: ext.status === "approved" ? "#22d3ee" : ext.status === "rejected" ? "#f87171" : "#e9c176" }}>
                     {ext.status === "approved" ? "✅ تم التمديد" : ext.status === "rejected" ? "❌ مرفوض" : "⏳ بانتظار الموافقة"}
                   </p>
