@@ -876,7 +876,7 @@ const SalaryWithdraw: React.FC = () => {
                 {transfers.map((t, i) => {
                   const isSelected = selectedTransfer?.reference_id === t.reference_id;
                   const _dt1 = t.time ? new Date(t.time) : null;
-                  const timeStr = (_dt1 && !isNaN(_dt1.getTime())) ? _dt1.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "";
+                  const timeStr = (_dt1 && !isNaN(_dt1.getTime())) ? _dt1.toLocaleTimeString("ar-u-ca-gregory", { hour: "2-digit", minute: "2-digit" }) : "";
                   return (
                     <motion.button key={t.reference_id || i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                       onClick={() => setSelectedTransfer(isSelected ? null : t)}
@@ -930,7 +930,7 @@ const SalaryWithdraw: React.FC = () => {
               </h3>
               {expiredTransfers.map((t: any, i: number) => {
                 const _dt2 = t.time ? new Date(t.time) : null;
-                const timeStr = (_dt2 && !isNaN(_dt2.getTime())) ? _dt2.toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
+                const timeStr = (_dt2 && !isNaN(_dt2.getTime())) ? _dt2.toLocaleDateString("ar-u-ca-gregory", { day: "2-digit", month: "2-digit" }) : "";
                 const us = t.usedStatus;
                 const isApproved = us === "approved" || us === "delivered";
                 const isRejected = us === "rejected";
@@ -1049,8 +1049,8 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "receipt" && selectedTransfer) {
     const receiptCode = `GC-${selectedTransfer.reference_id || "MAN"}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
     const receiptDate = selectedTransfer.time
-      ? (() => { const _d = new Date(selectedTransfer.time); return isNaN(_d.getTime()) ? new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : _d.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }); })()
-      : new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      ? (() => { const _d = new Date(selectedTransfer.time); return isNaN(_d.getTime()) ? new Date().toLocaleDateString("ar-u-ca-gregory", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : _d.toLocaleDateString("ar-u-ca-gregory", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }); })()
+      : new Date().toLocaleDateString("ar-u-ca-gregory", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
     const receiptItems = [
       { label: "التاريخ", value: receiptDate, color: surfaceText.color },
