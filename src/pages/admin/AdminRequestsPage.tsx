@@ -15,6 +15,7 @@ import { sendUserNotification } from "@/utils/sendUserNotification";
 import SvgaPlayer from "@/components/SvgaPlayer";
 import { captureMediaThumbnail } from "@/utils/captureMediaThumbnail";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/utils/compressImage";
 
 /** Check if a string looks like a UUID/hex hash (not a human name) */
 const isUuidLike = (s: string) => /^[0-9a-f]{24,}$/i.test(s?.trim?.() || "");
@@ -85,11 +86,15 @@ const AdminRequestsPage: React.FC = () => {
     }
     setDirectUploading(true);
     try {
-      const ext = getUploadImageExtension(directFile);
-      const path = `room-backgrounds/direct/${directUuid.trim()}_${Date.now()}.${ext}`;
+      const processedFile = await compressImage(directFile, 1200, 1200, 0.82);
+      const ext = getUploadImageExtension(processedFile);
+      const uploadFile = processedFile.type.startsWith("image/")
+        ? new File([processedFile], processedFile.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" })
+        : processedFile;
+      const path = `room-backgrounds/direct/${directUuid.trim()}_${Date.now()}.${ext === "jpeg" ? "jpg" : ext}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("attachments")
-        .upload(path, directFile, { contentType: directFile.type, upsert: true });
+        .upload(path, uploadFile, { contentType: uploadFile.type || "image/jpeg", upsert: true });
       if (uploadError || !uploadData) {
         toast.error(uploadError?.message || "فشل رفع الصورة");
         return;
