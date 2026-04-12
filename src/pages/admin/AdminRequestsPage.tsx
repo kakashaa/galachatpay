@@ -69,6 +69,15 @@ const AdminRequestsPage: React.FC = () => {
   const [directUploading, setDirectUploading] = useState(false);
   const directFileRef = useRef<HTMLInputElement>(null);
 
+  const getUploadImageExtension = (file: File) => {
+    const nameExt = file.name.split(".").pop()?.toLowerCase();
+    if (nameExt) return nameExt;
+    if (file.type === "image/png") return "png";
+    if (file.type === "image/webp") return "webp";
+    if (file.type === "image/gif") return "gif";
+    return "jpg";
+  };
+
   const handleDirectUpload = async () => {
     if (!directUuid.trim() || !directFile) {
       toast.error("أدخل UUID واختر صورة");
@@ -76,21 +85,32 @@ const AdminRequestsPage: React.FC = () => {
     }
     setDirectUploading(true);
     try {
-      const path = `room-backgrounds/direct/${directUuid.trim()}_${Date.now()}.png`;
-      const { data: uploadData } = await supabase.storage
+      const ext = getUploadImageExtension(directFile);
+      const path = `room-backgrounds/direct/${directUuid.trim()}_${Date.now()}.${ext}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from("attachments")
         .upload(path, directFile, { contentType: directFile.type, upsert: true });
-      if (!uploadData) { toast.error("فشل رفع الصورة"); return; }
+      if (uploadError || !uploadData) {
+        toast.error(uploadError?.message || "فشل رفع الصورة");
+        return;
+      }
+
       const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
       const imageUrl = urlData.publicUrl;
-      const data = await api.uploadRoomBackground(directUuid.trim(), imageUrl);
+
+      const data = await callWaresApi("upload-room-background", {
+        uuid: directUuid.trim(),
+        image_url: imageUrl,
+      });
+
       if (data.ok || data.success) {
         toast.success("تم تغيير خلفية الغرفة!");
         setShowDirectUpload(false);
         setDirectUuid("");
         setDirectFile(null);
       } else {
-        toast.error("فشل: " + (data.error || "خطأ غير معروف"));
+        console.error("Direct room background upload failed:", data);
+        toast.error("فشل: " + (data.error || data.message || "خطأ غير معروف"));
       }
     } catch (e: any) {
       toast.error("خطأ: " + (e.message || "غير معروف"));
