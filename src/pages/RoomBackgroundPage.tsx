@@ -88,7 +88,7 @@ const RoomBackgroundPage: React.FC = () => {
     const { error } = await supabase.from("room_background_requests").insert({
       user_uuid: user.uuid, user_name: user.name || "", request_type: "self", image_url: url, month,
     });
-    if (error) { setStatus({ type: "error", message: "فشل الإرسال" }); }
+    if (error) { console.error("Room bg insert error:", error); setStatus({ type: "error", message: "فشل الإرسال: " + (error.message || "خطأ غير معروف") }); }
     else {
       // Sync with official dashboard
       try { await supabase.functions.invoke("wares-request", { body: { action: "upload-room-background", uuid: user.uuid, image_url: url } }); } catch {}
