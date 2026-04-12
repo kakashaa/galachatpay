@@ -65,10 +65,16 @@ const RoomBackgroundPage: React.FC = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const uploadImage = async (f: File): Promise<string | null> => {
-    const ext = f.name.split(".").pop();
+    const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
     const path = `room-backgrounds/${user?.uuid}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("attachments").upload(path, f);
-    if (error) return null;
+    const { error } = await supabase.storage.from("attachments").upload(path, f, {
+      contentType: f.type || "image/jpeg",
+      upsert: true,
+    });
+    if (error) {
+      console.error("Room bg upload error:", error);
+      return null;
+    }
     const { data } = supabase.storage.from("attachments").getPublicUrl(path);
     return data.publicUrl;
   };
@@ -82,7 +88,7 @@ const RoomBackgroundPage: React.FC = () => {
     const { error } = await supabase.from("room_background_requests").insert({
       user_uuid: user.uuid, user_name: user.name || "", request_type: "self", image_url: url, month,
     });
-    if (error) { setStatus({ type: "error", message: "فشل الإرسال" }); }
+    if (error) { console.error("Room bg insert error:", error); setStatus({ type: "error", message: "فشل الإرسال: " + (error.message || "خطأ غير معروف") }); }
     else {
       // Sync with official dashboard
       try { await supabase.functions.invoke("wares-request", { body: { action: "upload-room-background", uuid: user.uuid, image_url: url } }); } catch {}
