@@ -65,10 +65,16 @@ const RoomBackgroundPage: React.FC = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const uploadImage = async (f: File): Promise<string | null> => {
-    const ext = f.name.split(".").pop();
+    const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
     const path = `room-backgrounds/${user?.uuid}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("attachments").upload(path, f);
-    if (error) return null;
+    const { error } = await supabase.storage.from("attachments").upload(path, f, {
+      contentType: f.type || "image/jpeg",
+      upsert: true,
+    });
+    if (error) {
+      console.error("Room bg upload error:", error);
+      return null;
+    }
     const { data } = supabase.storage.from("attachments").getPublicUrl(path);
     return data.publicUrl;
   };
