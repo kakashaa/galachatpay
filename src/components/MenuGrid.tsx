@@ -67,7 +67,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
     { icon: PlayCircle, label: "صورة متحركة", route: "/animated-photo", bg: "rgba(249,115,22,0.12)", iconColor: "text-orange-400", banKey: "animated_photos" },
     { icon: Frame, label: "إطار", route: "/frames", bg: "rgba(99,102,241,0.12)", iconColor: "text-indigo-400", guestAllowed: true, banKey: "frames" },
     { icon: BadgeCheck, label: "مركز الشارة", route: "/hairs", bg: "rgba(251,191,36,0.12)", iconColor: "text-amber-400", banKey: "hairs" },
-    { icon: Briefcase, label: "البيدي", route: "/works", bg: "rgba(212,165,116,0.15)", iconColor: "text-[#D4A574]", banKey: "works" },
+    
     { icon: ClipboardList, label: "التذاكر", route: "/support-tickets", bg: "rgba(139,92,246,0.12)", iconColor: "text-violet-400" },
     { icon: Crown, label: "مزايا الداعم", route: "/supporter-benefits", bg: "rgba(234,179,8,0.12)", iconColor: "text-yellow-500" },
     { icon: Image, label: "خلفيات الغرف", route: "/room-background", bg: "rgba(147,51,234,0.12)", iconColor: "text-violet-400" },
