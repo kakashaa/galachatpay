@@ -103,6 +103,11 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
       setShowLogin(true);
       return;
     }
+    // Salary withdrawal is locked
+    if (item.route === "/salary") {
+      setSalaryLockOpen(true);
+      return;
+    }
     // Check if element is disabled globally
     if (item.banKey && !isElementEnabled(item.banKey)) {
       setDisabledDialog({ open: true, label: item.label });
