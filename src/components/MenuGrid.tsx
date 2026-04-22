@@ -4,7 +4,7 @@ import {
   Wallet, Headset, Fingerprint, Crown, Gift,
   Sparkles, PlayCircle, Frame, FileText, BadgeCheck, Briefcase,
   Ban, Clock, Construction, Landmark, AlertTriangle,
-  Zap, Image, ClipboardList,
+  Zap, Image, ClipboardList, Lock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useElementSettings } from "@/hooks/use-element-settings";
@@ -54,6 +54,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
   const [showLogin, setShowLogin] = useState(false);
   const [bdBanned, setBdBanned] = useState(false);
   const [disabledDialog, setDisabledDialog] = useState<{ open: boolean; label: string }>({ open: false, label: "" });
+  const [salaryLockOpen, setSalaryLockOpen] = useState(false);
 
   const agencyLoggedIn = !!localStorage.getItem("ghala_token") && localStorage.getItem("ghala_type") === "agent";
 
@@ -100,6 +101,11 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
   const handleClick = (item: MenuItem) => {
     if (!isAuthenticated && !item.guestAllowed) {
       setShowLogin(true);
+      return;
+    }
+    // Salary withdrawal is locked
+    if (item.route === "/salary") {
+      setSalaryLockOpen(true);
       return;
     }
     // Check if element is disabled globally
@@ -204,6 +210,28 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
           <p className="text-xs text-muted-foreground">
             سوف يتوفر قريباً إن شاء الله
           </p>
+        </DialogContent>
+      </Dialog>
+
+      {/* Salary Locked Dialog */}
+      <Dialog open={salaryLockOpen} onOpenChange={setSalaryLockOpen}>
+        <DialogContent className="max-w-xs text-center p-6 rounded-2xl border-border bg-background" dir="rtl">
+          <div className="mx-auto w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-3">
+            <Lock className="w-8 h-8 text-red-400" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground mb-2">سحب الراتب مقفل</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+            مقفل فقط لسحب راتب آخر شهر
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            إذا حبيت تشحن أو تشحن لصديق استخدم حسابك في تطبيق <span className="font-bold text-foreground">غلا لايف</span>
+          </p>
+          <button
+            onClick={() => setSalaryLockOpen(false)}
+            className="mt-4 w-full py-2.5 rounded-xl text-xs font-bold text-white bg-primary active:opacity-80"
+          >
+            حسناً
+          </button>
         </DialogContent>
       </Dialog>
 
