@@ -4,7 +4,7 @@ import {
   Wallet, Headset, Fingerprint, Crown, Gift,
   Sparkles, PlayCircle, Frame, FileText, BadgeCheck, Briefcase,
   Ban, Clock, Construction, Landmark, AlertTriangle,
-  Zap, Image, ClipboardList,
+  Zap, Image, ClipboardList, Lock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useElementSettings } from "@/hooks/use-element-settings";
