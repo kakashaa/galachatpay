@@ -55,6 +55,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
   const [bdBanned, setBdBanned] = useState(false);
   const [disabledDialog, setDisabledDialog] = useState<{ open: boolean; label: string }>({ open: false, label: "" });
   const [salaryLockOpen, setSalaryLockOpen] = useState(false);
+  const [vipLockOpen, setVipLockOpen] = useState(false);
 
   const agencyLoggedIn = !!localStorage.getItem("ghala_token") && localStorage.getItem("ghala_type") === "agent";
 
@@ -106,6 +107,11 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
     // Salary withdrawal is locked
     if (item.route === "/salary") {
       setSalaryLockOpen(true);
+      return;
+    }
+    // VIP requests locked by admin
+    if (item.route === "/request-vip") {
+      setVipLockOpen(true);
       return;
     }
     // Check if element is disabled globally
@@ -228,6 +234,28 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
           </p>
           <button
             onClick={() => setSalaryLockOpen(false)}
+            className="mt-4 w-full py-2.5 rounded-xl text-xs font-bold text-white bg-primary active:opacity-80"
+          >
+            حسناً
+          </button>
+        </DialogContent>
+      </Dialog>
+
+      {/* VIP Locked Dialog */}
+      <Dialog open={vipLockOpen} onOpenChange={setVipLockOpen}>
+        <DialogContent className="max-w-xs text-center p-6 rounded-2xl border-border bg-background" dir="rtl">
+          <div className="mx-auto w-16 h-16 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center mb-3">
+            <Lock className="w-8 h-8 text-yellow-400" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground mb-2">طلب VIP مقفل</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+            تم إيقاف طلبات VIP مؤقتاً من قبل الإدارة
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            للحصول على VIP استخدم حسابك في تطبيق <span className="font-bold text-foreground">غلا لايف</span>
+          </p>
+          <button
+            onClick={() => setVipLockOpen(false)}
             className="mt-4 w-full py-2.5 rounded-xl text-xs font-bold text-white bg-primary active:opacity-80"
           >
             حسناً
