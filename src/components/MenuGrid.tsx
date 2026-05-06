@@ -115,6 +115,11 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
       setVipLockOpen(true);
       return;
     }
+    // Change ID locked by admin
+    if (item.route === "/change-id") {
+      setIdChangeLockOpen(true);
+      return;
+    }
     // Check if element is disabled globally
     if (item.banKey && !isElementEnabled(item.banKey)) {
       setDisabledDialog({ open: true, label: item.label });
