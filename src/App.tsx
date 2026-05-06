@@ -21,6 +21,7 @@ const ScrollToTop = () => {
 };
 
 const Login = lazy(() => import("./pages/Login"));
+const Maintenance = lazy(() => import("./pages/Maintenance"));
 
 // Lazy load all pages except Login (entry point)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
