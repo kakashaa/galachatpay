@@ -21,6 +21,7 @@ const ScrollToTop = () => {
 };
 
 const Login = lazy(() => import("./pages/Login"));
+const Maintenance = lazy(() => import("./pages/Maintenance"));
 
 // Lazy load all pages except Login (entry point)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -194,6 +195,9 @@ const App = () => {
               )}
               <Suspense fallback={<PageLoader />}>
                 <Routes>
+                  <Route path="*" element={<Maintenance />} />
+                  {false && (<>
+
                   <Route path="/" element={<Login />} />
                   <Route path="/index" element={<Dashboard />} />
                   <Route path="/dashboard" element={<Dashboard />} />
@@ -279,6 +283,7 @@ const App = () => {
                   <Route path="/embed/support-tickets" element={<SupportTicketsEmbed />} />
                   <Route path="/embed/support-chat" element={<SupportChatEmbed />} />
                   <Route path="*" element={<NotFound />} />
+                  </>)}
                 </Routes>
               </Suspense>
             </BrowserRouter>
