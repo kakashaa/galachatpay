@@ -269,6 +269,28 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
         </DialogContent>
       </Dialog>
 
+      {/* Change ID Locked Dialog */}
+      <Dialog open={idChangeLockOpen} onOpenChange={setIdChangeLockOpen}>
+        <DialogContent className="max-w-xs text-center p-6 rounded-2xl border-border bg-background" dir="rtl">
+          <div className="mx-auto w-16 h-16 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center mb-3">
+            <Lock className="w-8 h-8 text-purple-400" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground mb-2">تغيير الآيدي موقف</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+            تم إيقاف طلبات تغيير الآيدي مؤقتاً من قبل الإدارة
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            لتغيير الآيدي تواصل مع الدعم أو استخدم تطبيق <span className="font-bold text-foreground">غلا لايف</span>
+          </p>
+          <button
+            onClick={() => setIdChangeLockOpen(false)}
+            className="mt-4 w-full py-2.5 rounded-xl text-xs font-bold text-white bg-primary active:opacity-80"
+          >
+            حسناً
+          </button>
+        </DialogContent>
+      </Dialog>
+
       <GuestLoginPrompt open={showLogin} onClose={() => setShowLogin(false)} />
     </>
   );
