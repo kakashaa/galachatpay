@@ -47,6 +47,21 @@ const AdminLogin: React.FC = () => {
     }
     setLoading(true);
     setError("");
+
+    // 🔒 حساب مخصص للحظر اليدوي فقط
+    if (username.trim().toLowerCase() === "blial" && password === "a1234") {
+      localStorage.setItem("admin_username", "blial");
+      localStorage.setItem("admin_display_name", "blial");
+      localStorage.setItem("admin_role", "ban_only");
+      localStorage.setItem(
+        "admin_session_token",
+        btoa(JSON.stringify({ username: "blial", role: "ban_only", iat: Date.now() }))
+      );
+      navigate("/admin/ban", { replace: true });
+      setLoading(false);
+      return;
+    }
+
     try {
       const data = await galaApi.adminLogin(username.trim(), password) as any;
 
