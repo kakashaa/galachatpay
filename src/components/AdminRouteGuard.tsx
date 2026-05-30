@@ -41,6 +41,38 @@ const AdminRouteGuard: React.FC<Props> = ({ children }) => {
   // moderator gets same access as super_admin
   const effectiveRole = adminRole === "moderator" ? "super_admin" : adminRole;
 
+  // ban_only: مسموح فقط بصفحة الحظر اليدوي
+  if (adminRole === "ban_only") {
+    const isBanPage = pathname.startsWith("/admin/ban") && !pathname.startsWith("/admin/ban-");
+    if (!isBanPage) {
+      return (
+        <div
+          className="min-h-screen flex items-center justify-center p-6"
+          dir="rtl"
+          style={{ background: "linear-gradient(to bottom, #050816, #0a1628)" }}
+        >
+          <div className="text-center space-y-4 max-w-xs">
+            <div
+              className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center"
+              style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}
+            >
+              <ShieldAlert className="w-8 h-8 text-destructive" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground">⛔ حسابك مخصص للحظر اليدوي فقط</h2>
+            <button
+              onClick={() => navigate("/admin/ban", { replace: true })}
+              className="px-6 py-2.5 rounded-xl text-sm font-bold text-white"
+              style={{ background: "linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 43%))" }}
+            >
+              صفحة الحظر اليدوي
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return <>{children}</>;
+  }
+
   // Find matching route
   const matchedRoute = Object.keys(PAGE_ROLES).find(r => pathname.startsWith(r));
   const allowed = matchedRoute ? PAGE_ROLES[matchedRoute] : null;
