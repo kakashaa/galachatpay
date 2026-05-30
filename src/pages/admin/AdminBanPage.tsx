@@ -137,14 +137,35 @@ const AdminBanPage: React.FC = () => {
 
   /* ── API actions ── */
   const doBan = async (uuid: string, reason: string, hours: number, banType: string) => {
+    let lastError: Error | null = null;
+
+    try {
+      const projectZResult: any = await galaApi.banUser(uuid, reason, {
+        reason_type: banType === "device" ? "promotion" : reason.includes("سب") || reason.includes("إساءة") ? "insult" : "other",
+        duration: hours === 999999 ? "permanent" : `${hours}h`,
+        hours,
+        ban_type: banType,
+        admin: adminUsername || "admin",
+      });
+
+      if (projectZResult?.success !== false && !projectZResult?.error) {
+        const durText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
+        await sendUserNotification(uuid, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durText}.`).catch(() => {});
+        return;
+      }
+
+      lastError = new Error(projectZResult?.error || projectZResult?.message || "فشل الحظر من السيرفر");
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("فشل الحظر من السيرفر");
+    }
+
     const banRes = await supabase.functions.invoke("wares-request", {
       body: { action: "ban-user-real", uuid, reason, hours: String(hours), ban_type: banType },
     });
-    if (banRes.error) throw new Error("فشل الحظر: خطأ في الاتصال");
-    // Check API response data
+    if (banRes.error) throw lastError || new Error("فشل الحظر: خطأ في الاتصال");
     const resData = banRes.data;
-    if (resData && resData.ok === false) {
-      throw new Error(resData.error || "فشل الحظر من السيرفر");
+    if (resData && (resData.ok === false || resData.success === false)) {
+      throw lastError || new Error(resData.error || "فشل الحظر من السيرفر");
     }
     const durText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
     await sendUserNotification(uuid, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durText}.`).catch(() => {});
