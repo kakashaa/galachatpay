@@ -195,12 +195,9 @@ const App = () => {
               )}
               <Suspense fallback={<PageLoader />}>
                 <Routes>
-                  {/* روابط مباشرة متاحة أثناء وضع الصيانة */}
+                  {/* رابط الحظر اليدوي فقط متاح أثناء الصيانة */}
                   <Route path="/admin" element={<AdminLogin />} />
-                  <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                   <Route path="/admin/ban" element={<AdminRouteGuard><AdminBanPage /></AdminRouteGuard>} />
-                  <Route path="/admin/monitor" element={<AdminRouteGuard><AdminMonitorPage /></AdminRouteGuard>} />
-                  <Route path="/admin/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="*" element={<Maintenance />} />
                   {false && (<>
 
