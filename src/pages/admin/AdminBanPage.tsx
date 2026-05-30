@@ -137,36 +137,42 @@ const AdminBanPage: React.FC = () => {
 
   /* ── API actions ── */
   const doBan = async (uuid: string, reason: string, hours: number, banType: string) => {
-    let lastError: Error | null = null;
-
-    try {
-      const projectZResult: any = await galaApi.banUser(uuid, reason, {
-        reason_type: banType === "device" ? "promotion" : reason.includes("سب") || reason.includes("إساءة") ? "insult" : "other",
-        duration: hours === 999999 ? "permanent" : `${hours}h`,
-        hours,
-        ban_type: banType,
-        admin: adminUsername || "admin",
-      });
-
-      if (projectZResult?.success !== false && !projectZResult?.error) {
-        const durText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
-        await sendUserNotification(uuid, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durText}.`).catch(() => {});
-        return;
-      }
-
-      lastError = new Error(projectZResult?.error || projectZResult?.message || "فشل الحظر من السيرفر");
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("فشل الحظر من السيرفر");
-    }
-
-    const banRes = await supabase.functions.invoke("wares-request", {
-      body: { action: "ban-user-real", uuid, reason, hours: String(hours), ban_type: banType },
+    const sessionToken = localStorage.getItem("admin_session_token");
+    const { data: banData, error: banError } = await supabase.functions.invoke("admin-manage", {
+      body: {
+        username: adminUsername || "blial",
+        session_token: sessionToken,
+        action: "ban_user",
+        data: {
+          uuid,
+          reason,
+          ban_type: banType,
+          duration: hours === 999999 ? "permanent" : `${hours}h`,
+        },
+      },
     });
-    if (banRes.error) throw lastError || new Error("فشل الحظر: خطأ في الاتصال");
-    const resData = banRes.data;
-    if (resData && (resData.ok === false || resData.success === false)) {
-      throw lastError || new Error(resData.error || "فشل الحظر من السيرفر");
+
+    if (banError) throw new Error("فشل الحظر: خطأ في الاتصال");
+    if (banData?.error) throw new Error(banData.error);
+    if (banData?.data?.success === false) {
+      throw new Error(banData.data?.ban_result?.error || "فشل الحظر من السيرفر");
     }
+
+    let verified = false;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const profile: any = await galaApi.userFull(uuid).catch(() => null);
+      const info = profile?.data ?? profile;
+      if (info?.is_banned === true) {
+        verified = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 900));
+    }
+
+    if (!verified) {
+      throw new Error("تم إرسال أمر الحظر لكن لم يتأكد الحظر داخل غلا لايف بعد");
+    }
+
     const durText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
     await sendUserNotification(uuid, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durText}.`).catch(() => {});
   };

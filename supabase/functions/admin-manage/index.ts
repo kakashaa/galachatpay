@@ -11,6 +11,7 @@ const corsHeaders = {
 const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: "owner" | "super_admin" | "admin" }> = {
   naz: { envKey: "ADMIN_NAZ_PASSWORD", role: "owner" },
   blnawah: { envKey: "ADMIN_BLNAWAH_PASSWORD", role: "admin" },
+  blial: { envKey: "ADMIN_PASSWORD", role: "admin" },
 };
 
 // HMAC-SHA256 token signing & verification
