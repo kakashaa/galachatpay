@@ -287,9 +287,38 @@ const AdminBanPage: React.FC = () => {
     if (!t || !/^\d+$/.test(t)) { toast.error("UUID غير صحيح"); return; }
     setBanLookup(true); setBanTarget(null);
     try {
-      const data = await galaApi.checkSupporter(t);
-      if (data?.data?.name) setBanTarget({ name: data.data.name, image: data.data.profile?.image || "" });
-      else toast.error("المستخدم غير موجود");
+      // 1) supporter check
+      try {
+        const data = await galaApi.checkSupporter(t);
+        if (data?.data?.name) {
+          setBanTarget({ name: data.data.name, image: data.data.profile?.image || "" });
+          return;
+        }
+      } catch {}
+      // 2) user-full fallback
+      try {
+        const full: any = await galaApi.userFull(t);
+        const name = full?.data?.name || full?.data?.nickname || full?.name;
+        const image = full?.data?.image || full?.data?.avatar || full?.image || "";
+        if (name) { setBanTarget({ name, image }); return; }
+      } catch {}
+      // 3) aws user-info fallback
+      try {
+        const aws: any = await galaApi.awsUserInfo(t);
+        const name = aws?.data?.name || aws?.data?.nickname || aws?.name;
+        const image = aws?.data?.image || aws?.data?.avatar || "";
+        if (name) { setBanTarget({ name, image }); return; }
+      } catch {}
+      // 4) project-z public info
+      try {
+        const info: any = await galaApi.getUserInfo(t);
+        const name = info?.data?.name || info?.data?.nickname || info?.name;
+        const image = info?.data?.image || info?.data?.avatar || "";
+        if (name) { setBanTarget({ name, image }); return; }
+      } catch {}
+      // Allow ban without lookup
+      setBanTarget({ name: `UUID ${t}`, image: "" });
+      toast.message("لم يتم العثور على بيانات المستخدم — يمكن المتابعة بالحظر");
     } catch { toast.error("خطأ"); }
     finally { setBanLookup(false); }
   };
