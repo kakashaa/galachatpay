@@ -403,11 +403,11 @@ const AdminBanPage: React.FC = () => {
       });
 
       toast.dismiss(t);
-      toast.success("تم الحظر!");
+      toast.success("تم الحظر بعد التحقق من غلا لايف");
       setBanUuid(""); setBanTarget(null); setBanReason("insult"); setBanCustom(""); setBanImage(null);
       setShowManualBan(false);
       fetchReports();
-    } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل"); }
+    } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل الحظر الفعلي في غلا لايف"); }
     finally { setBanLoading(false); }
   };
 
